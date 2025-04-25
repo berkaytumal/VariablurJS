@@ -1,0 +1,8 @@
+{
+  "name": "variableblur",
+  "version": "1.0.0",
+  "main": "variableblur.js",
+  "author": "berkaytumal",
+  "license": "MIT",
+  "description": "Creates a variable blur effect layer like iOS and supports other CSS filters as well"
+}
