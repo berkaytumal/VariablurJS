@@ -1,6 +1,5 @@
 // variablur: Variable blur and filter utility for web overlays
 // (c) 2025 berkaytumal. MIT License.
-window.DEBUG = true;
 function calcBlurPerLayer(totalPx, layers) {
     if (layers <= 0) throw new Error("layers must be > 0");
     return totalPx / Math.sqrt(layers);
@@ -272,10 +271,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
                     if (hasAnyVariablurCSS(node)) {
                         attach(node);
                     }
-                    // Optionally, check descendants
-                    node.querySelectorAll?.('*').forEach(child => {
-                        if (hasAnyVariablurCSS(child)) attach(child);
-                    });
                 }
             }
             // Handle attribute changes
