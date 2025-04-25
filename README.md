@@ -4,6 +4,11 @@
 
 Variable blur and filter utility for web overlays, inspired by iOS and original [Variablur](https://github.com/daprice/Variablur) project. Supports variable blur and other CSS filters.
 
+![View Demo 1](https://img.shields.io/badge/View%20Demo%201-f?style=for-the-badge&link=https%3A%2F%2Fhtml-preview.github.io%2F%3Furl%3Dhttps%3A%2F%2Fgithub.com%2Fberkaytumal%2FVariablurJS%2Fblob%2Fmain%2Fexamples%2Fdemo.html)
+![View Demo 2](https://img.shields.io/badge/View%20Demo%202-f?style=for-the-badge&link=https%3A%2F%2Fhtml-preview.github.io%2F%3Furl%3Dhttps%3A%2F%2Fgithub.com%2Fberkaytumal%2FVariablurJS%2Fblob%2Fmain%2Fexamples%2Fdemo2.html)
+![View Demo 3](https://img.shields.io/badge/View%20Demo%203-f?style=for-the-badge&link=https%3A%2F%2Fhtml-preview.github.io%2F%3Furl%3Dhttps%3A%2F%2Fgithub.com%2Fberkaytumal%2FVariablurJS%2Fblob%2Fmain%2Fexamples%2Fdemo3.html)
+
+
 ## Usage
 
 Just include the script directly in your HTML:
