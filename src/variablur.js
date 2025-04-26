@@ -75,6 +75,7 @@ const filterConverter = {
 }
 const CSS_VARIABLES = ['--variablur-filter', '--variablur-direction', '--variablur-offset', "--variablur-layers", "--variablur-color"]; // Add more variables as needed
 const attachedElements = new WeakSet();
+const attachedElementsList = new Set(); // Track all attached elements for iteration
 const resizeObservers = new WeakMap();
 
 function hasAnyVariablurCSS(node) {
@@ -99,6 +100,7 @@ function attach(el) {
     if (!attachedElements.has(el)) {
         if (window.DEBUG) console.log('Attaching element:', el);
         attachedElements.add(el);
+        attachedElementsList.add(el); // Add to iterable set
         update(el);
 
         // Add ResizeObserver
@@ -112,6 +114,7 @@ function detach(el) {
     if (attachedElements.has(el)) {
         if (window.DEBUG) console.log('Detaching element:', el);
         attachedElements.delete(el);
+        attachedElementsList.delete(el); // Remove from iterable set
         // Disconnect ResizeObserver if present
         const ro = resizeObservers.get(el);
         if (ro) {
@@ -251,6 +254,31 @@ const variablur = {
     hasAnyVariablurCSS
 };
 
+// Store last known CSS variable values for each element
+const lastCSSVars = new WeakMap();
+const POLL_INTERVAL = 200; // ms, adjust as needed
+
+function pollCSSVariables() {
+    attachedElementsList.forEach(el => {
+        const style = window.getComputedStyle(el);
+        const prev = lastCSSVars.get(el) || {};
+        let changed = false;
+        const current = {};
+        for (const variable of CSS_VARIABLES) {
+            const val = style.getPropertyValue(variable).trim();
+            current[variable] = val;
+            if (prev[variable] !== val) {
+                changed = true;
+            }
+        }
+        if (changed) {
+            lastCSSVars.set(el, current);
+            update(el);
+        }
+    });
+    requestAnimationFrame(pollCSSVariables);
+}
+
 // Only run DOM code in browser environments
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     // Attach existing elements before observer starts
@@ -261,9 +289,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         });
     }
     attachExistingElements();
-
+    console.log("observer started");
     // Observe new elements added to body (and subtree)
     const observer = new MutationObserver(mutations => {
+        console.log("observer triggered");
         for (const mutation of mutations) {
             // Handle added nodes
             for (const node of mutation.addedNodes) {
@@ -293,6 +322,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     });
     // Observe for added nodes and style attribute changes
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+
+    // Start polling for CSS variable changes
+    requestAnimationFrame(pollCSSVariables);
 }
 
 // Export for CommonJS and ESM
