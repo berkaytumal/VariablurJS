@@ -1,5 +1,7 @@
 // variablur: Variable blur and filter utility for web overlays
 // (c) 2025 berkaytumal. MIT License.
+import debug from "./debug";
+import parseCalcRelative from './calc.js';
 function calcBlurPerLayer(totalPx, layers) {
     if (layers <= 0) throw new Error("layers must be > 0");
     return totalPx / Math.sqrt(layers);
@@ -17,14 +19,13 @@ function exponentialBlurLayers(totalPx, layers, base = 2) {
     // Step 3: Apply scale to each weight
     return weights.map(w => w * scale);
 }
-function calculateMask(i, n, direction, offset, el) {
-
+function calculateMask(i, n, direction, offset, el, invert = false) {
     const step = 100 / n;
-    //offset = offset * previousN / n;
     const cl = v => Math.max(0, Math.min(100, v));
     const dir = (direction || "bottom").toLowerCase();
     const size = (dir === "left" || dir === "right") ? el.clientWidth : el.clientHeight;
-    const scale = offset / size;
+    let scale = offset / size;
+    if (invert) scale = 1 - scale; // Invert the scale if requested
     const shift = 1 - scale;
     const a = cl((i - 1) * step) * scale + 100 * shift;
     const c = cl((i + 1) * step) * scale + 100 * shift;
@@ -73,7 +74,13 @@ const filterConverter = {
         }).join(" ");
     }
 }
-const CSS_VARIABLES = ['--variablur-filter', '--variablur-direction', '--variablur-offset', "--variablur-layers", "--variablur-color"]; // Add more variables as needed
+const CSS_VARIABLES = [
+    '--variablur-filter',
+    '--variablur-direction',
+    '--variablur-offset',
+    "--variablur-layers",
+    "--variablur-color"
+]; // Add more variables as needed
 const attachedElements = new WeakSet();
 const attachedElementsList = new Set(); // Track all attached elements for iteration
 const resizeObservers = new WeakMap();
@@ -98,7 +105,7 @@ function hasAnyVariablurCSS(node) {
 
 function attach(el) {
     if (!attachedElements.has(el)) {
-        if (window.DEBUG) console.log('Attaching element:', el);
+        debug.log('Attaching element:', el);
         attachedElements.add(el);
         attachedElementsList.add(el); // Add to iterable set
         update(el);
@@ -112,7 +119,7 @@ function attach(el) {
 
 function detach(el) {
     if (attachedElements.has(el)) {
-        if (window.DEBUG) console.log('Detaching element:', el);
+        debug.log('Detaching element:', el);
         attachedElements.delete(el);
         attachedElementsList.delete(el); // Remove from iterable set
         // Disconnect ResizeObserver if present
@@ -128,13 +135,13 @@ function detach(el) {
 function update(el) {
     var variablurContainer = el.querySelector('.backdrop-container');
     if (window.getComputedStyle(el).position === 'static') {
-        if (window.DEBUG) console.warn('Element has static position:', el);
+        debug.warn('Element has static position:', el);
         el.style.position = 'relative';
     }
     if (!variablurContainer) {
         // Prevent infinite loop: only create if not already present
         if (!el.querySelector('.backdrop-container')) {
-            if (window.DEBUG) console.log('No backdrop container found for element:', el, 'creating one.');
+            debug.log('No backdrop container found for element:', el, 'creating one.');
             var variablurContainer = document.createElement('div');
             variablurContainer.classList.add('backdrop-container');
             variablurContainer.style.position = 'absolute';
@@ -146,7 +153,7 @@ function update(el) {
             variablurContainer.style.zIndex = '-1';
             variablurContainer.style.overflow = 'hidden';
             el.appendChild(variablurContainer);
-            if (window.DEBUG) console.log('Backdrop container created:', variablurContainer);
+            debug.log('Backdrop container created:', variablurContainer);
         }
     }
     const variablurFilter = getComputedStyle(el).getPropertyValue('--variablur-filter').trim();
@@ -157,6 +164,9 @@ function update(el) {
     const filter = filterConverter.fromString(variablurFilter);
     const direction = ["top", "bottom", "left", "right"].some(n => n == variablurDirection) ? variablurDirection : "bottom";
     const offset = (() => {
+
+        return parseCalcRelative(variablurOffset, el, (direction == "left" || direction == "right") ? 0 : 1);
+        return
         if (variablurOffset.endsWith('px')) {
             return parseFloat(variablurOffset);
         } else if (variablurOffset.endsWith('%')) {
@@ -175,12 +185,12 @@ function update(el) {
     const layers = parseInt(variablurLayers) || 5;
     const color = variablurColor || "transparent";
     if (variablurContainer.childNodes.length > layers + 1) {
-        if (window.DEBUG) console.warn('Too many layers in backdrop container:', variablurContainer.childNodes.length, 'max:', layers);
+        if (window.DEBUG) debug.warn('Too many layers in backdrop container:', variablurContainer.childNodes.length, 'max:', layers);
         while (variablurContainer.childNodes.length > layers + 1) {
             variablurContainer.removeChild(variablurContainer.lastChild);
         }
     } else if (variablurContainer.childNodes.length < layers + 1) {
-        if (window.DEBUG) console.warn('Not enough layers in backdrop container:', variablurContainer.childNodes.length, 'max:', layers);
+        if (window.DEBUG) debug.warn('Not enough layers in backdrop container:', variablurContainer.childNodes.length, 'max:', layers);
         while (variablurContainer.childNodes.length < layers + 1) {
             const newLayer = document.createElement('div');
             newLayer.classList.add('backdrop-layer');
@@ -205,7 +215,7 @@ function update(el) {
                 name != "blur"
             ));
             const size = (direction === "left" || direction === "right") ? el.clientWidth : el.clientHeight;
-            const scale = 1 - (offset / size);
+            let scale = 1 - (offset / size);
             layer.style.maskImage = `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`;
             layer.style.setProperty('-webkit-mask-image', `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`);
             layer.style.backgroundColor = color;
@@ -236,8 +246,8 @@ function update(el) {
 
     });
     if (window.DEBUG) {
-        console.log('Updating element:', el);
-        console.log('direction:', direction);
+        debug.log('Updating element:', el);
+        debug.log('direction:', direction);
     }
 }
 
@@ -289,10 +299,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         });
     }
     attachExistingElements();
-    console.log("observer started");
+    debug.log("observer started");
     // Observe new elements added to body (and subtree)
     const observer = new MutationObserver(mutations => {
-        console.log("observer triggered");
+        debug.log("observer triggered");
         for (const mutation of mutations) {
             // Handle added nodes
             for (const node of mutation.addedNodes) {

@@ -30,16 +30,25 @@ If you want to control it manually, you can use:
 - `VariablurJS.attach(element)` – Attach variable blur to an element
 - `VariablurJS.detach(element)` – Remove variable blur from an element
 - `VariablurJS.update(element)` – Manually update blur on an element
-- `VariablurJS.hasAnyVariableCSS(element)` – Check if element uses variable blur CSS variables
+- `VariablurJS.hasAnyVariablurCSS(element)` – Check if element uses variable blur CSS variables
 - Math utilities: `calcBlurPerLayer`, `exponentialBlurLayers`, etc.
+
+> **Note:** The API uses `VariablurJS.hasAnyVariablurCSS` (not `hasAnyVariableCSS`).
 
 ## CSS Variables
 
-- `--variable-backdrop-filter`: CSS filter string (e.g. `blur(20px)`)
-- `--variable-backdrop-direction`: `top`, `bottom`, `left`, `right`
-- `--variable-backdrop-offset`: e.g. `40px` or `20%`
-- `--variable-backdrop-layers`: number of layers
-- `--variable-backdrop-color`: overlay color
+- `--variablur-filter`: CSS filter string (e.g. `blur(20px)`)
+- `--variablur-direction`: `top`, `bottom`, `left`, `right`
+- `--variablur-offset`: e.g. `40px` or `20%` or `calc(50% - 10px)`
+- `--variablur-layers`: number of layers (default: 5)
+- `--variablur-color`: overlay color (default: transparent)
+
+### Notes
+
+- The prefix for all CSS variables is now `--variablur-` (not `--variable-backdrop-`).
+- Supports `calc()` and relative units for `--variablur-offset`.
+- The library automatically observes DOM changes and CSS variable changes.
+- No need to call any methods for basic usage—just set the CSS variables on your element.
 
 ## Contributing
 
