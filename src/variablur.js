@@ -164,23 +164,7 @@ function update(el) {
     const filter = filterConverter.fromString(variablurFilter);
     const direction = ["top", "bottom", "left", "right"].some(n => n == variablurDirection) ? variablurDirection : "bottom";
     const offset = (() => {
-
         return parseCalcRelative(variablurOffset, el, (direction == "left" || direction == "right") ? 0 : 1);
-        return
-        if (variablurOffset.endsWith('px')) {
-            return parseFloat(variablurOffset);
-        } else if (variablurOffset.endsWith('%')) {
-            const percent = parseFloat(variablurOffset) / 100;
-            if (direction === "left" || direction === "right") {
-                return percent * el.clientWidth;
-            } else {
-                return percent * el.clientHeight;
-            }
-        } else if (variablurOffset) {
-            return parseFloat(variablurOffset);
-        } else {
-            return direction === "left" || direction === "right" ? el.clientWidth : el.clientHeight;
-        }
     })();
     const layers = parseInt(variablurLayers) || 5;
     const color = variablurColor || "transparent";
@@ -207,11 +191,9 @@ function update(el) {
     }
     // Implement your update logic here
     // For demonstration:
-    var filterArr = filterConverter.fromString(variablurFilter);
-
     Array.from(variablurContainer.children).forEach((layer, i) => {
         if (i == layers) {
-            layer.style.backdropFilter = filterConverter.toString(filterArr.filter(([name, value, unit]) =>
+            layer.style.backdropFilter = filterConverter.toString(filter.filter(([name, value, unit]) =>
                 name != "blur"
             ));
             const size = (direction === "left" || direction === "right") ? el.clientWidth : el.clientHeight;
@@ -220,7 +202,7 @@ function update(el) {
             layer.style.setProperty('-webkit-mask-image', `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`);
             layer.style.backgroundColor = color;
         } else {
-            var filterArrLayer = filterArr.map(([name, value, unit]) => {
+            var filterLayer = filter.map(([name, value, unit]) => {
                 if (name === "blur") {
                     // Distribute blur across layers
                     // Use exponentialBlurLayers for more realistic stacking
@@ -232,7 +214,7 @@ function update(el) {
                 }
             })
 
-            layer.style.backdropFilter = filterConverter.toString(filterArrLayer.filter(([name, value, unit]) =>
+            layer.style.backdropFilter = filterConverter.toString(filterLayer.filter(([name, value, unit]) =>
                 name == "blur"
             ));
             layer.style.setProperty('-webkit-backdrop-filter', layer.style.backdropFilter);
@@ -291,7 +273,7 @@ function pollCSSVariables() {
 
 // Only run DOM code in browser environments
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-    // Attach existing elements before observer starts
+    // Attach existing elements before polling starts
     function attachExistingElements(root = document.body) {
         if (hasAnyVariablurCSS(root)) attach(root);
         root.querySelectorAll('*').forEach(el => {
@@ -299,39 +281,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         });
     }
     attachExistingElements();
-    debug.log("observer started");
-    // Observe new elements added to body (and subtree)
-    const observer = new MutationObserver(mutations => {
-        debug.log("observer triggered");
-        for (const mutation of mutations) {
-            // Handle added nodes
-            for (const node of mutation.addedNodes) {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    if (hasAnyVariablurCSS(node)) {
-                        attach(node);
-                    }
-                }
-            }
-            // Handle attribute changes
-            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                const el = mutation.target;
-                const hasVar = hasAnyVariablurCSS(el);
-                if (hasVar) {
-                    if (!attachedElements.has(el)) {
-                        attach(el);
-                    } else {
-                        update(el);
-                    }
-                } else {
-                    if (attachedElements.has(el)) {
-                        detach(el);
-                    }
-                }
-            }
-        }
-    });
-    // Observe for added nodes and style attribute changes
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+    debug.log("polling started");
+
+    // Removed MutationObserver logic
 
     // Start polling for CSS variable changes
     requestAnimationFrame(pollCSSVariables);
