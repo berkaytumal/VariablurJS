@@ -197,7 +197,7 @@ function update(el) {
                 name != "blur"
             ));
             const size = (direction === "left" || direction === "right") ? el.clientWidth : el.clientHeight;
-            let scale = 1 - (offset / size);
+            let scale = offset / size; // changed from 1 - (offset / size) to offset / size
             layer.style.maskImage = `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`;
             layer.style.setProperty('-webkit-mask-image', `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`);
             layer.style.backgroundColor = color;
@@ -219,8 +219,8 @@ function update(el) {
             ));
             layer.style.setProperty('-webkit-backdrop-filter', layer.style.backdropFilter);
 
-            layer.style.maskImage = calculateMask(i, layers + 1, direction, offset, el);
-            layer.style.setProperty('-webkit-mask-image', calculateMask(i, layers + 1, direction, offset, el));
+            layer.style.maskImage = calculateMask(i, layers + 1, direction, offset, el, true);
+            layer.style.setProperty('-webkit-mask-image', calculateMask(i, layers + 1, direction, offset, el, true));
 
         }
 
