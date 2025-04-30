@@ -27,28 +27,35 @@ See `examples/demo.html` for a usage example in the browser.
 
 If you want to control it manually, you can use:
 
-- `VariablurJS.attach(element)` – Attach variable blur to an element
+- `VariablurJS.attach(element)` – Attach variable blur to an element (and its descendants)
 - `VariablurJS.detach(element)` – Remove variable blur from an element
 - `VariablurJS.update(element)` – Manually update blur on an element
 - `VariablurJS.hasAnyVariablurCSS(element)` – Check if element uses variable blur CSS variables
 - Math utilities: `calcBlurPerLayer`, `exponentialBlurLayers`, etc.
+- `VariablurJS.startPolling()` – Start automatic polling for CSS variable changes (default: enabled)
+- `VariablurJS.stopPolling()` – Stop automatic polling
 
-> **Note:** The API uses `VariablurJS.hasAnyVariablurCSS` (not `hasAnyVariableCSS`).
+> **Note:**  
+> If you want to use `attach`, `detach`, or `update` manually, **call `VariablurJS.stopPolling()` first** to prevent the automatic polling from interfering with your manual control.
 
 ## CSS Variables
 
 - `--variablur-filter`: CSS filter string (e.g. `blur(20px)`)
 - `--variablur-direction`: `top`, `bottom`, `left`, `right`
-- `--variablur-offset`: e.g. `40px` or `20%` or `calc(50% - 10px)`
+- `--variablur-offset`: e.g. `40px`, `20%`, or `calc(50% - 10px)`  
+  Controls how far from the specified edge the blur/fade effect extends into the element.
 - `--variablur-layers`: number of layers (default: 5)
 - `--variablur-color`: overlay color (default: transparent)
 
 ### Notes
 
-- The prefix for all CSS variables is now `--variablur-` (not `--variable-backdrop-`).
-- Supports `calc()` and relative units for `--variablur-offset`.
-- The library automatically observes DOM changes and CSS variable changes.
+- The prefix for all CSS variables is `--variablur-`.
+- `--variablur-offset` is interpreted as the distance from the chosen edge where the blur/fade effect extends into the element.  
+  (e.g. `40px` means the effect transitions over 40px from the edge.)
+- The library automatically observes DOM and CSS variable changes using a polling mechanism by default.
 - No need to call any methods for basic usage—just set the CSS variables on your element.
+- When you call `attach(element)`, all descendants with variablur CSS variables are also attached automatically.
+- **If you want to manage elements manually, call `VariablurJS.stopPolling()` first.**
 
 ## Contributing
 

@@ -243,12 +243,32 @@ const variablur = {
     attach,
     detach,
     update,
-    hasAnyVariablurCSS
+    hasAnyVariablurCSS,
+    startPolling,
+    stopPolling
 };
 
 // Store last known CSS variable values for each element
 const lastCSSVars = new WeakMap();
 const POLL_INTERVAL = 200; // ms, adjust as needed
+
+let pollingActive = false;
+let pollingHandle = null;
+
+function startPolling() {
+    if (!pollingActive) {
+        pollingActive = true;
+        pollCSSVariables();
+    }
+}
+
+function stopPolling() {
+    pollingActive = false;
+    if (pollingHandle) {
+        cancelAnimationFrame(pollingHandle);
+        pollingHandle = null;
+    }
+}
 
 function pollCSSVariables() {
     attachedElementsList.forEach(el => {
@@ -268,7 +288,9 @@ function pollCSSVariables() {
             update(el);
         }
     });
-    requestAnimationFrame(pollCSSVariables);
+    if (pollingActive) {
+        pollingHandle = requestAnimationFrame(pollCSSVariables);
+    }
 }
 
 // Only run DOM code in browser environments
@@ -283,10 +305,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     attachExistingElements();
     debug.log("polling started");
 
-    // Removed MutationObserver logic
-
     // Start polling for CSS variable changes
-    requestAnimationFrame(pollCSSVariables);
+    startPolling();
 }
 
 // Export for CommonJS and ESM
