@@ -32,8 +32,8 @@ If you want to control it manually, you can use:
 - `VariablurJS.update(element)` – Manually update blur on an element
 - `VariablurJS.hasAnyVariablurCSS(element)` – Check if element uses variable blur CSS variables
 - Math utilities: `calcBlurPerLayer`, `exponentialBlurLayers`, etc.
-- `VariablurJS.startPolling()` – Start automatic polling for CSS variable changes (default: enabled)
-- `VariablurJS.stopPolling()` – Stop automatic polling
+- `VariablurJS.startPolling()` – Start global automatic polling for all attached elements (default: enabled at startup)
+- `VariablurJS.stopPolling()` – Stop global automatic polling
 
 > **Note:**  
 > If you want to use `attach`, `detach`, or `update` manually, **call `VariablurJS.stopPolling()` first** to prevent the automatic polling from interfering with your manual control.

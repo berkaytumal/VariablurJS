@@ -84,6 +84,10 @@ const lastCSSVars = new WeakMap();
 let pollingActive = false;
 let pollingHandle = null;
 
+// Per-element polling
+const elementPollingHandles = new WeakMap();
+let globalPollingActive = false;
+
 // --- Core Functions ---
 
 function hasAnyVariablurCSS(node) {
@@ -112,6 +116,7 @@ function attach(el) {
         const ro = new ResizeObserver(() => update(el));
         ro.observe(el);
         resizeObservers.set(el, ro);
+        startElementPolling(el);
     }
     // Always check children, even if el was already attached
     el.querySelectorAll('*').forEach(child => {
@@ -131,6 +136,7 @@ function detach(el) {
             ro.disconnect();
             resizeObservers.delete(el);
         }
+        stopElementPolling(el);
     }
 }
 
@@ -250,18 +256,60 @@ function pollCSSVariables() {
     }
 }
 
-function startPolling() {
-    if (!pollingActive) {
-        pollingActive = true;
-        pollCSSVariables();
+function pollElementCSSVariables(el) {
+    if (!attachedElements.has(el)) return;
+    const style = window.getComputedStyle(el);
+    const prev = lastCSSVars.get(el) || {};
+    let changed = false;
+    const current = {};
+    for (const variable of CSS_VARIABLES) {
+        const val = style.getPropertyValue(variable).trim();
+        current[variable] = val;
+        if (prev[variable] !== val) changed = true;
     }
+    if (changed) {
+        lastCSSVars.set(el, current);
+        update(el);
+    }
+    if (elementPollingHandles.has(el)) {
+        const handle = requestAnimationFrame(() => pollElementCSSVariables(el));
+        elementPollingHandles.set(el, handle);
+    }
+}
+
+function startPolling() {
+    // Stop all per-element polling
+    elementPollingHandles.forEach((handle, el) => {
+        cancelAnimationFrame(handle);
+        elementPollingHandles.delete(el);
+    });
+    pollingActive = true;
+    globalPollingActive = true;
+    pollCSSVariables();
 }
 
 function stopPolling() {
     pollingActive = false;
+    globalPollingActive = false;
     if (pollingHandle) {
         cancelAnimationFrame(pollingHandle);
         pollingHandle = null;
+    }
+}
+
+function startElementPolling(el) {
+    if (globalPollingActive) return; // Don't start per-element polling if global polling is active
+    if (!elementPollingHandles.has(el)) {
+        const handle = requestAnimationFrame(() => pollElementCSSVariables(el));
+        elementPollingHandles.set(el, handle);
+    }
+}
+
+function stopElementPolling(el) {
+    const handle = elementPollingHandles.get(el);
+    if (handle) {
+        cancelAnimationFrame(handle);
+        elementPollingHandles.delete(el);
     }
 }
 
