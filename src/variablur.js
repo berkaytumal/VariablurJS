@@ -393,99 +393,125 @@ function stopElementPolling(el) {
 
 // --- Glass Refraction SVG Filter ---
 
-function calculateRefractionMap(refraction, offset, width, height, radius) {
-    // Generate a displacement map based on refraction value
-    width = width || 100;
-    height = height || 100;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-
-    // Start with neutral gray (128) as base for SVG displacement maps
-    ctx.fillStyle = 'rgb(128,128,128)';
-    ctx.fillRect(0, 0, width, height);
-
-    function displacementBox(x, y, w, h, displacementX, displacementY) {
-        // Create ImageData to manually blend displacement values
-        const imageData = ctx.getImageData(x, y, w, h);
-        const data = imageData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-            // Add displacement to existing values, clamping to 0-255
-            data[i] = Math.max(0, Math.min(255, data[i] + displacementX));     // R
-            data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + displacementY)); // G
-            // B and A stay the same
+function calculateGlassRefractionMap(refraction, offset, width, height, radius) {
+    // Create ImageData for elegant glass displacement map
+    const imageData = new ImageData(width, height);
+    const data = imageData.data;
+    
+    // Glass parameters - optimized for realistic magnifying glass effect
+    const edgeThickness = Math.max(offset || Math.min(width, height) * 0.15, 8);
+    const intensity = Math.max(refraction * 0.8, 0.1); // Refined intensity scaling
+    const centerX = (width - 1) * 0.5;  // Perfect center for symmetric refraction
+    const centerY = (height - 1) * 0.5;
+    
+    // High-performance pixel processing
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const pixelIndex = (y * width + x) * 4;
+            
+            // Elegant edge distance calculation with rounded corners support
+            const distanceFromEdge = radius > 0 
+                ? calculateRoundedEdgeDistance(x, y, width, height, radius)
+                : Math.min(x, width - 1 - x, y, height - 1 - y); // Perfect symmetry
+            
+            // Only process pixels within the glass edge zone
+            if (distanceFromEdge > edgeThickness || distanceFromEdge < 0) {
+                // Neutral displacement for areas outside glass edge
+                data[pixelIndex] = 128;     // Red (horizontal neutral)
+                data[pixelIndex + 1] = 128; // Green (vertical neutral)  
+                data[pixelIndex + 2] = 128; // Blue (unused, neutral)
+                data[pixelIndex + 3] = 255; // Alpha (opaque)
+                continue;
+            }
+            
+            // Elegant magnifying glass falloff - smooth at center, defined at edges
+            const normalizedEdgeDistance = distanceFromEdge / edgeThickness;
+            const glassStrength = createGlassFalloff(normalizedEdgeDistance);
+            
+            // Pure radial displacement for perfect symmetry
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Natural lens distortion with distance-based scaling
+            const maxRadius = Math.min(width, height) * 0.4;
+            const distanceScale = Math.min(1, distance / maxRadius);
+            const lensEffect = smoothStep(distanceScale) * 0.7 + 0.3;
+            
+            // Calculate displacement with chromatic aberration
+            const baseStrength = glassStrength * intensity * lensEffect;
+            const redDisplacement = Math.cos(angle) * baseStrength;
+            const greenDisplacement = Math.sin(angle) * baseStrength;
+            
+            // Subtle chromatic aberration for realism
+            const chromaticAngle = Math.PI / 24; // 7.5 degrees
+            const chromaticStrength = baseStrength * 0.06;
+            const chromaticRed = Math.cos(angle + chromaticAngle) * chromaticStrength;
+            const chromaticGreen = Math.sin(angle - chromaticAngle) * chromaticStrength;
+            
+            // Final displacement values with chromatic offset
+            const finalRedDisplacement = redDisplacement + chromaticRed;
+            const finalGreenDisplacement = greenDisplacement + chromaticGreen;
+            
+            // Convert to displacement map values (128 = neutral, 0-255 range)
+            const amplification = refraction * 6; // Balanced amplification
+            const redValue = clamp(128 + finalRedDisplacement * amplification, 0, 255);
+            const greenValue = clamp(128 + finalGreenDisplacement * amplification, 0, 255);
+            
+            // Set pixel values
+            data[pixelIndex] = Math.round(redValue);
+            data[pixelIndex + 1] = Math.round(greenValue);
+            data[pixelIndex + 2] = 128; // Neutral blue channel
+            data[pixelIndex + 3] = 255; // Full opacity
         }
-
-        ctx.putImageData(imageData, x, y);
     }
-
-    function displacementLinearGradient(left, top, width, height, displacementX, displacementY, direction = "bottom") {
-        if(width <= 0 || height <= 0) return;
-        // Create a temporary canvas for the gradient
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = width;
-        tempCanvas.height = height;
-        const tempCtx = tempCanvas.getContext('2d');
-
-        // Set gradient direction based on string parameter
-        let x1, y1, x2, y2;
-        switch (direction.toLowerCase()) {
-            case "left":
-                x1 = 0; y1 = 0; x2 = width; y2 = 0;
-                break;
-            case "right":
-                x1 = width; y1 = 0; x2 = 0; y2 = 0;
-                break;
-            case "top":
-                x1 = 0; y1 = 0; x2 = 0; y2 = height;
-                break;
-            case "bottom":
-            default:
-                x1 = 0; y1 = height; x2 = 0; y2 = 0;
-                break;
-        }
-
-        const gradient = tempCtx.createLinearGradient(x1, y1, x2, y2);
-        gradient.addColorStop(0, `rgb(${128 + displacementX}, ${128 + displacementY}, 128)`);
-        gradient.addColorStop(1, `rgb(${128 + 0}, ${128 + 0}, 128)`);
-        tempCtx.fillStyle = gradient;
-        tempCtx.fillRect(0, 0, width, height);
-
-        // Get both images as ImageData
-        const mainImageData = ctx.getImageData(left, top, width, height);
-        const gradientImageData = tempCtx.getImageData(0, 0, width, height);
-
-        // Manually blend: (main - 128) + (gradient - 128) + 128 = main + gradient - 128
-        for (let i = 0; i < mainImageData.data.length; i += 4) {
-            const mainR = mainImageData.data[i];
-            const mainG = mainImageData.data[i + 1];
-            const gradR = gradientImageData.data[i];
-            const gradG = gradientImageData.data[i + 1];
-
-            // Additive blending centered around 128
-            mainImageData.data[i] = Math.max(0, Math.min(255, mainR + gradR - 128));
-            mainImageData.data[i + 1] = Math.max(0, Math.min(255, mainG + gradG - 128));
-        }
-
-        ctx.putImageData(mainImageData, left, top);
-    }
-
-    displacementLinearGradient(0, 0, width, offset, 0, -127 * (refraction - 1), "top"); // Vertical gradient with horizontal displacement
-    displacementLinearGradient(0, height - offset, width, offset, 0, 127 * (refraction - 1), "bottom"); // Vertical gradient with horizontal displacement
-    displacementLinearGradient(0, 0, offset, height, -127 * (refraction - 1), 0, "left"); // Horizontal gradient with vertical displacement
     
-    // Calculate displacement amount based on refraction index
-    // Refraction of 1.0 = no displacement, higher values = more displacement
-    const maxDisplacement = 127;
-    const displacementAmount = Math.round((refraction - 1.0) * maxDisplacement);
-    
-    displacementLinearGradient(width - offset, 0, offset, height, 127 * (refraction - 1), 0, "right");
-    
-    // Get bitmap data as array of color bits (Uint8ClampedArray)
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     return imageData;
+}
+
+// Helper functions for elegant glass calculation
+function calculateRoundedEdgeDistance(x, y, width, height, radius) {
+    const halfWidth = (width - 1) * 0.5;  // Centered coordinate system
+    const halfHeight = (height - 1) * 0.5;
+    const centerX = halfWidth;
+    const centerY = halfHeight;
+    
+    const dx = Math.abs(x - centerX);
+    const dy = Math.abs(y - centerY);
+    
+    // Check if point is in corner radius area
+    const cornerX = Math.max(0, dx - (halfWidth - radius));
+    const cornerY = Math.max(0, dy - (halfHeight - radius));
+    
+    if (cornerX > 0 || cornerY > 0) {
+        // In corner - distance to rounded edge
+        return Math.max(0, radius - Math.sqrt(cornerX * cornerX + cornerY * cornerY));
+    } else {
+        // In straight edge area - symmetric calculation
+        return Math.min(halfWidth - dx, halfHeight - dy);
+    }
+}
+
+function createGlassFalloff(normalizedDistance) {
+    // Elegant glass falloff: strong at edges, smooth fade to center
+    const t = 1 - normalizedDistance; // Invert: 1 at edge, 0 at center
+    
+    // Combine exponential curve (for edge definition) with smooth transition
+    const edgeDefinition = Math.pow(t, 1.8); // Sharp at edges
+    const smoothTransition = (1 - Math.cos(t * Math.PI)) * 0.5; // Smooth S-curve
+    
+    // Blend for optimal glass appearance
+    return edgeDefinition * 0.75 + smoothTransition * 0.25;
+}
+
+function smoothStep(t) {
+    // Smooth interpolation function
+    return t * t * (3 - 2 * t);
+}
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
 }
 
 function createGlassSVGFilter(el) {
@@ -498,7 +524,8 @@ function createGlassSVGFilter(el) {
     const style = window.getComputedStyle(el);
     const refractionValue = parseFloat(style.getPropertyValue('--variablur-glass-refraction')) || 0;
     const offsetValue = parseFloat(style.getPropertyValue('--variablur-glass-offset')) || 0;
-    const imageData = calculateRefractionMap(refractionValue, offsetValue, width, height, Math.min(width, height) / 2);
+    const borderRadius = parseFloat(window.getComputedStyle(el).borderRadius) || 0;
+    const imageData = calculateGlassRefractionMap(refractionValue, offsetValue, width, height, borderRadius);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -534,7 +561,7 @@ function createGlassSVGFilter(el) {
     const svgString = `
       <filter id="${filterId}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
         <feImage result="FEIMG" href="${mapUrl}"/>
-        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" xChannelSelector="R" yChannelSelector="G" />
+        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="40" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     `;
     return { svgString, filterId };
@@ -569,7 +596,7 @@ const variablur = {
     startPolling,
     stopPolling,
     createGlassSVGFilter,
-    calculateRefractionMap
+    calculateRefractionMap: calculateGlassRefractionMap
 };
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
