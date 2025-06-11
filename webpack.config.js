@@ -6,6 +6,8 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     library: 'variablur',
     libraryTarget: 'umd',
+    libraryExport: 'default',
+    globalObject: 'this'
   },
   module: {
     rules: [

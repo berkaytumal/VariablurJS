@@ -1,8 +1,18 @@
 // variablur: Variable blur and filter utility for web overlays
 // (c) 2025 berkaytumal. MIT License.
 
-import debug from "./debug";
+import debug from "./debug.js";
 import parseCalcRelative from './calc.js';
+
+const CSS_VARIABLES = [
+    '--variablur-filter',
+    '--variablur-direction',
+    '--variablur-offset',
+    '--variablur-layers',
+    '--variablur-color',
+    '--variablur-glass-refraction',
+    '--variablur-glass-offset'
+];
 
 // --- Utility Functions ---
 
@@ -66,20 +76,15 @@ const filterConverter = {
     }
 };
 
-const CSS_VARIABLES = [
-    '--variablur-filter',
-    '--variablur-direction',
-    '--variablur-offset',
-    '--variablur-layers',
-    '--variablur-color'
-];
-
 // --- State ---
 
 const attachedElements = new WeakSet();
 const attachedElementsList = new Set();
 const resizeObservers = new WeakMap();
 const lastCSSVars = new WeakMap();
+
+// Track last filterId per element for cleanup
+const lastGlassFilterId = new WeakMap();
 
 let pollingActive = false;
 let pollingHandle = null;
@@ -171,6 +176,8 @@ function update(el) {
     const variablurOffset = style.getPropertyValue('--variablur-offset').trim();
     const variablurLayers = style.getPropertyValue('--variablur-layers').trim();
     const variablurColor = style.getPropertyValue('--variablur-color').trim();
+    const variablurGlassRefraction = style.getPropertyValue('--variablur-glass-refraction').trim();
+    const variablurGlassOffset = style.getPropertyValue('--variablur-glass-offset').trim();
 
     const filter = filterConverter.fromString(variablurFilter);
     const direction = ["top", "bottom", "left", "right"].includes(variablurDirection) ? variablurDirection : "bottom";
@@ -201,7 +208,7 @@ function update(el) {
     // Update each layer
     Array.from(variablurContainer.children).forEach((layer, i) => {
         if (i === layers) {
-            // Top layer: no blur, just color overlay and mask
+            // Top layer, for brightness/contrast/etc.
             layer.style.backdropFilter = filterConverter.toString(filter.filter(([name]) => name !== "blur"));
             layer.style.setProperty('-webkit-backdrop-filter', layer.style.backdropFilter);
             const size = (direction === "left" || direction === "right") ? el.clientWidth : el.clientHeight;
@@ -209,8 +216,26 @@ function update(el) {
             layer.style.maskImage = `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`;
             layer.style.setProperty('-webkit-mask-image', `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`);
             layer.style.backgroundColor = color;
+            // Glass refraction effect using backdrop-filter
+            if (variablurGlassRefraction) {
+                const refractionIntensity = parseFloat(variablurGlassRefraction) || 1.0;
+                const glassOffset = parseFloat(variablurGlassOffset) || 0;
+                
+                // Create a distortion effect using backdrop-filter
+                const distortionFilter = `hue-rotate(${refractionIntensity * 5}deg) saturate(${1 + refractionIntensity * 0.1}) brightness(${1 + glassOffset * 0.1})`;
+                
+                // Add glass distortion to existing backdrop filter
+                const currentFilter = layer.style.backdropFilter || '';
+                if (currentFilter && !currentFilter.includes('hue-rotate')) {
+                    layer.style.backdropFilter = `${currentFilter} ${distortionFilter}`;
+                    layer.style.setProperty('-webkit-backdrop-filter', `${currentFilter} ${distortionFilter}`);
+                } else if (!currentFilter) {
+                    layer.style.backdropFilter = distortionFilter;
+                    layer.style.setProperty('-webkit-backdrop-filter', distortionFilter);
+                }
+            }
         } else {
-            // Blur layers
+            // Variable blur gradient layers
             const filterLayer = filter.map(([name, value, unit]) => {
                 if (name === "blur") {
                     const totalPx = value;
@@ -279,9 +304,12 @@ function pollElementCSSVariables(el) {
 
 function startPolling() {
     // Stop all per-element polling
-    elementPollingHandles.forEach((handle, el) => {
-        cancelAnimationFrame(handle);
-        elementPollingHandles.delete(el);
+    attachedElementsList.forEach(el => {
+        const handle = elementPollingHandles.get(el);
+        if (handle) {
+            cancelAnimationFrame(handle);
+            elementPollingHandles.delete(el);
+        }
     });
     pollingActive = true;
     globalPollingActive = true;
@@ -313,6 +341,51 @@ function stopElementPolling(el) {
     }
 }
 
+// --- Glass Refraction SVG Filter ---
+
+function calculateRefractionMap(refraction, width, height, radius) {
+    // Generate a simple Perlin-like noise bitmap as a data URL for displacement
+    width = width || 100;
+    height = height || 100;
+    const scale = Math.max(0, Math.min(1, parseFloat(refraction) / 10));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgb(127,127,127)'; // Neutral gray for displacement
+    ctx.fillRect(0, 0, width, height); // Fill with red to ensure we have a base color
+
+
+    // Get bitmap data as array of color bits (Uint8ClampedArray)
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    return imageData;
+}
+
+function createGlassSVGFilter(el, refraction) {
+    const width = el ? el.offsetWidth : 100;
+    const height = el ? el.offsetHeight : 100;
+    const filterId = `variablur-glass-${Math.abs(String(refraction).split('').reduce((a, c) => a + c.charCodeAt(0), 0))}-${width}x${height}`;
+    // calculateRefractionMap now returns ImageData, so we need to convert it to a data URL
+    const imageData = calculateRefractionMap(0, width, height, Math.min(width, height) / 2);
+
+    // Convert ImageData to data URL
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.putImageData(imageData, 0, 0);
+    const mapUrl = canvas.toDataURL();
+
+    // SVG filter string using feImage for displacement map
+    const svgString = `
+      <filter id="${filterId}" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox">
+        <feImage result="map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" xlink:href="${mapUrl}"/>
+        <feDisplacementMap in2="map" in="SourceGraphic" scale="100" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    `;
+    return { svgString, filterId };
+}
+
 // --- Initialization ---
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -340,13 +413,15 @@ const variablur = {
     update,
     hasAnyVariablurCSS,
     startPolling,
-    stopPolling
+    stopPolling,
+    createGlassSVGFilter,
+    calculateRefractionMap
 };
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     module.exports = variablur;
-} else if (typeof define === 'function' && define.amd) {
-    define(function () { return variablur; });
-} else {
+} else if (typeof window !== 'undefined') {
     window.variablur = variablur;
 }
+
+export default variablur;

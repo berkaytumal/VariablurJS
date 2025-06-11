@@ -1,4 +1,4 @@
-import debug from "./debug";
+import debug from "./debug.js";
 function parseCalcRelative(calcString, element, direction = 0) {
     const rect = element.getBoundingClientRect();
     const width = rect.width;
