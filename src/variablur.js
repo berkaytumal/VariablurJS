@@ -455,7 +455,7 @@ function calculateGlassRefractionMap(refraction, offset, width, height, radius) 
             const finalGreenDisplacement = greenDisplacement + chromaticGreen;
             
             // Convert to displacement map values (128 = neutral, 0-255 range)
-            const amplification = refraction * 6; // Balanced amplification
+            const amplification = refraction * 100; // Balanced amplification
             const redValue = clamp(128 + finalRedDisplacement * amplification, 0, 255);
             const greenValue = clamp(128 + finalGreenDisplacement * amplification, 0, 255);
             
