@@ -83,8 +83,8 @@ const attachedElementsList = new Set();
 const resizeObservers = new WeakMap();
 const lastCSSVars = new WeakMap();
 
-// Track last filterId per element for cleanup
-const lastGlassFilterId = new WeakMap();
+// Track blob URLs per element for cleanup
+const elementBlobUrls = new WeakMap();
 
 let pollingActive = false;
 let pollingHandle = null;
@@ -136,6 +136,20 @@ function detach(el) {
         debug.log('Detaching element:', el);
         attachedElements.delete(el);
         attachedElementsList.delete(el);
+
+        // Clean up blob URLs
+        const blobUrls = elementBlobUrls.get(el);
+        if (blobUrls) {
+            blobUrls.forEach(url => URL.revokeObjectURL(url));
+            elementBlobUrls.delete(el);
+        }
+
+        // Clean up backdrop container and SVG filters
+        const backdropContainer = el.querySelector('.backdrop-container');
+        if (backdropContainer) {
+            backdropContainer.remove();
+        }
+
         const ro = resizeObservers.get(el);
         if (ro) {
             ro.disconnect();
@@ -216,22 +230,58 @@ function update(el) {
             layer.style.maskImage = `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`;
             layer.style.setProperty('-webkit-mask-image', `linear-gradient(to ${direction}, black ${scale * 100}%, transparent 100%)`);
             layer.style.backgroundColor = color;
-            // Glass refraction effect using backdrop-filter
+            // Glass refraction effect using SVG filter
             if (variablurGlassRefraction) {
-                const refractionIntensity = parseFloat(variablurGlassRefraction) || 1.0;
-                const glassOffset = parseFloat(variablurGlassOffset) || 0;
-                
-                // Create a distortion effect using backdrop-filter
-                const distortionFilter = `hue-rotate(${refractionIntensity * 5}deg) saturate(${1 + refractionIntensity * 0.1}) brightness(${1 + glassOffset * 0.1})`;
-                
+                const { svgString, filterId } = createGlassSVGFilter(el);
+                console.log('Creating glass SVG filter:', filterId);
+                // Add SVG to backdrop container if not already present
+                let svgElement = variablurContainer.querySelector(`#${filterId}`);
+                if (!svgElement) {
+                    // Clean up any existing SVG filters and their blob URLs
+                    const existingSvg = variablurContainer.querySelector('svg[data-variablur-svg]');
+                    if (existingSvg) {
+                        // Clean up old blob URLs
+                        const blobUrls = elementBlobUrls.get(el);
+                        if (blobUrls) {
+                            blobUrls.forEach(url => URL.revokeObjectURL(url));
+                        }
+                        existingSvg.remove();
+                    }
+
+                    // Create new SVG container
+                    const svgContainer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                    svgContainer.setAttribute('data-variablur-svg', 'true');
+                    svgContainer.style.position = 'absolute';
+                    svgContainer.style.width = '0';
+                    svgContainer.style.height = '0';
+                    svgContainer.style.pointerEvents = 'none';
+                    svgContainer.innerHTML = svgString;
+                    variablurContainer.appendChild(svgContainer);
+                }
+
+                const distortionFilter = `url(#${filterId})`;
+
                 // Add glass distortion to existing backdrop filter
                 const currentFilter = layer.style.backdropFilter || '';
-                if (currentFilter && !currentFilter.includes('hue-rotate')) {
+                if (currentFilter && !currentFilter.includes('url(#')) {
                     layer.style.backdropFilter = `${currentFilter} ${distortionFilter}`;
                     layer.style.setProperty('-webkit-backdrop-filter', `${currentFilter} ${distortionFilter}`);
                 } else if (!currentFilter) {
-                    layer.style.backdropFilter = distortionFilter;
-                    layer.style.setProperty('-webkit-backdrop-filter', distortionFilter);
+                    layer.style.backdropFilter = "blur(0px)";
+                    layer.style.setProperty('-webkit-backdrop-filter', "blur(0px)");
+                    layer.style.filter = distortionFilter;
+                }
+            } else {
+                // Remove SVG filter if glass refraction is disabled and clean up blob URLs
+                const existingSvg = variablurContainer.querySelector('svg[data-variablur-svg]');
+                if (existingSvg) {
+                    // Clean up blob URLs
+                    const blobUrls = elementBlobUrls.get(el);
+                    if (blobUrls) {
+                        blobUrls.forEach(url => URL.revokeObjectURL(url));
+                        elementBlobUrls.delete(el);
+                    }
+                    existingSvg.remove();
                 }
             }
         } else {
@@ -343,44 +393,148 @@ function stopElementPolling(el) {
 
 // --- Glass Refraction SVG Filter ---
 
-function calculateRefractionMap(refraction, width, height, radius) {
-    // Generate a simple Perlin-like noise bitmap as a data URL for displacement
+function calculateRefractionMap(refraction, offset, width, height, radius) {
+    // Generate a displacement map based on refraction value
     width = width || 100;
     height = height || 100;
-    const scale = Math.max(0, Math.min(1, parseFloat(refraction) / 10));
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgb(127,127,127)'; // Neutral gray for displacement
-    ctx.fillRect(0, 0, width, height); // Fill with red to ensure we have a base color
 
+    // Start with neutral gray (128) as base for SVG displacement maps
+    ctx.fillStyle = 'rgb(128,128,128)';
+    ctx.fillRect(0, 0, width, height);
 
+    function displacementBox(x, y, w, h, displacementX, displacementY) {
+        // Create ImageData to manually blend displacement values
+        const imageData = ctx.getImageData(x, y, w, h);
+        const data = imageData.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+            // Add displacement to existing values, clamping to 0-255
+            data[i] = Math.max(0, Math.min(255, data[i] + displacementX));     // R
+            data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + displacementY)); // G
+            // B and A stay the same
+        }
+
+        ctx.putImageData(imageData, x, y);
+    }
+
+    function displacementLinearGradient(left, top, width, height, displacementX, displacementY, direction = "bottom") {
+        if(width <= 0 || height <= 0) return;
+        // Create a temporary canvas for the gradient
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+        const tempCtx = tempCanvas.getContext('2d');
+
+        // Set gradient direction based on string parameter
+        let x1, y1, x2, y2;
+        switch (direction.toLowerCase()) {
+            case "left":
+                x1 = 0; y1 = 0; x2 = width; y2 = 0;
+                break;
+            case "right":
+                x1 = width; y1 = 0; x2 = 0; y2 = 0;
+                break;
+            case "top":
+                x1 = 0; y1 = 0; x2 = 0; y2 = height;
+                break;
+            case "bottom":
+            default:
+                x1 = 0; y1 = height; x2 = 0; y2 = 0;
+                break;
+        }
+
+        const gradient = tempCtx.createLinearGradient(x1, y1, x2, y2);
+        gradient.addColorStop(0, `rgb(${128 + displacementX}, ${128 + displacementY}, 128)`);
+        gradient.addColorStop(1, `rgb(${128 + 0}, ${128 + 0}, 128)`);
+        tempCtx.fillStyle = gradient;
+        tempCtx.fillRect(0, 0, width, height);
+
+        // Get both images as ImageData
+        const mainImageData = ctx.getImageData(left, top, width, height);
+        const gradientImageData = tempCtx.getImageData(0, 0, width, height);
+
+        // Manually blend: (main - 128) + (gradient - 128) + 128 = main + gradient - 128
+        for (let i = 0; i < mainImageData.data.length; i += 4) {
+            const mainR = mainImageData.data[i];
+            const mainG = mainImageData.data[i + 1];
+            const gradR = gradientImageData.data[i];
+            const gradG = gradientImageData.data[i + 1];
+
+            // Additive blending centered around 128
+            mainImageData.data[i] = Math.max(0, Math.min(255, mainR + gradR - 128));
+            mainImageData.data[i + 1] = Math.max(0, Math.min(255, mainG + gradG - 128));
+        }
+
+        ctx.putImageData(mainImageData, left, top);
+    }
+
+    displacementLinearGradient(0, 0, width, offset, 0, -127 * (refraction - 1), "top"); // Vertical gradient with horizontal displacement
+    displacementLinearGradient(0, height - offset, width, offset, 0, 127 * (refraction - 1), "bottom"); // Vertical gradient with horizontal displacement
+    displacementLinearGradient(0, 0, offset, height, -127 * (refraction - 1), 0, "left"); // Horizontal gradient with vertical displacement
+    
+    // Calculate displacement amount based on refraction index
+    // Refraction of 1.0 = no displacement, higher values = more displacement
+    const maxDisplacement = 127;
+    const displacementAmount = Math.round((refraction - 1.0) * maxDisplacement);
+    
+    displacementLinearGradient(width - offset, 0, offset, height, 127 * (refraction - 1), 0, "right");
+    
     // Get bitmap data as array of color bits (Uint8ClampedArray)
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     return imageData;
 }
 
-function createGlassSVGFilter(el, refraction) {
+function createGlassSVGFilter(el) {
     const width = el ? el.offsetWidth : 100;
     const height = el ? el.offsetHeight : 100;
-    const filterId = `variablur-glass-${Math.abs(String(refraction).split('').reduce((a, c) => a + c.charCodeAt(0), 0))}-${width}x${height}`;
-    // calculateRefractionMap now returns ImageData, so we need to convert it to a data URL
-    const imageData = calculateRefractionMap(0, width, height, Math.min(width, height) / 2);
-
-    // Convert ImageData to data URL
+    // Use a stable ID based on element and size to avoid regenerating filters unnecessarily
+    const filterId = `variablur-glass-${el.dataset.variablurUid ?? (el.dataset.variablurUid = crypto.randomUUID())}-${width}x${height}`;
+    // calculateRefractionMap now returns ImageData, so we need to convert it to a blob URL
+    // Get refraction and offset from element's CSS variables
+    const style = window.getComputedStyle(el);
+    const refractionValue = parseFloat(style.getPropertyValue('--variablur-glass-refraction')) || 0;
+    const offsetValue = parseFloat(style.getPropertyValue('--variablur-glass-offset')) || 0;
+    const imageData = calculateRefractionMap(refractionValue, offsetValue, width, height, Math.min(width, height) / 2);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.putImageData(imageData, 0, 0);
-    const mapUrl = canvas.toDataURL();
+
+    // Clean up any previous blob URLs for this element
+    let blobUrls = elementBlobUrls.get(el);
+    if (!blobUrls) {
+        blobUrls = [];
+        elementBlobUrls.set(el, blobUrls);
+    }
+
+    // Revoke previous blob URLs for this element to avoid memory leaks
+    while (blobUrls.length) {
+        URL.revokeObjectURL(blobUrls.pop());
+    }
+
+    // Create new blob URL for the displacement map
+    const dataUrl = canvas.toDataURL('image/png');
+    const byteString = atob(dataUrl.split(',')[1]);
+    const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeString });
+    const mapUrl = URL.createObjectURL(blob);
+    blobUrls.push(mapUrl);
 
     // SVG filter string using feImage for displacement map
     const svgString = `
-      <filter id="${filterId}" x="0" y="0" width="100%" height="100%" filterUnits="objectBoundingBox">
-        <feImage result="map" x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" xlink:href="${mapUrl}"/>
-        <feDisplacementMap in2="map" in="SourceGraphic" scale="100" xChannelSelector="R" yChannelSelector="G"/>
+      <filter id="${filterId}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feImage result="FEIMG" href="${mapUrl}"/>
+        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" xChannelSelector="R" yChannelSelector="G" />
       </filter>
     `;
     return { svgString, filterId };

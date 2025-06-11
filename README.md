@@ -10,6 +10,8 @@ Variable blur and filter utility for web overlays, inspired by iOS and original 
 
 [View Demo 3](https://html-preview.github.io/?url=https://github.com/berkaytumal/VariablurJS/blob/main/examples/demo3.html)
 
+[View Refraction Demo](https://html-preview.github.io/?url=https://github.com/berkaytumal/VariablurJS/blob/main/examples/refraction.html)
+
 
 ## Usage
 
@@ -34,6 +36,8 @@ If you want to control it manually, you can use:
 - Math utilities: `calcBlurPerLayer`, `exponentialBlurLayers`, etc.
 - `VariablurJS.startPolling()` – Start global automatic polling for all attached elements (default: enabled at startup)
 - `VariablurJS.stopPolling()` – Stop global automatic polling
+- `VariablurJS.calculateRefractionMap(refraction, offset, width, height)` – Generate displacement maps for glass effects
+- `VariablurJS.createGlassSVGFilter(element)` – Create SVG filters for glass refraction effects
 
 > **Note:**  
 > If you want to use `attach`, `detach`, or `update` manually, **call `VariablurJS.stopPolling()` first** to prevent the automatic polling from interfering with your manual control.
@@ -46,6 +50,39 @@ If you want to control it manually, you can use:
   Controls how far from the specified edge the blur/fade effect extends into the element.
 - `--variablur-layers`: number of layers (default: 5)
 - `--variablur-color`: overlay color (default: transparent)
+- `--variablur-glass-refraction`: glass refraction intensity (e.g. `1.5` for moderate refraction, `2.0` for strong)
+- `--variablur-glass-offset`: glass effect displacement area size in pixels (e.g. `20px`)
+
+## Glass Refraction Effects
+
+VariablurJS now supports realistic glass refraction effects using SVG displacement mapping, inspired by iOS 18's Liquid Glass effects. This creates authentic distortion effects that simulate light bending through glass surfaces.
+
+### How to Use Glass Effects
+
+Add the glass refraction CSS variables to any element:
+
+```css
+.glass-panel {
+  --variablur-glass-refraction: 2;
+  --variablur-glass-offset: 30px;
+  /* Optional: combine with blur for frosted glass effect */
+  --variablur-filter: blur(5px);
+}
+```
+
+### Glass Effect Parameters
+
+- **`--variablur-glass-refraction`**: Controls the intensity of light bending
+  - `1.0` = no refraction (neutral)
+  - `1.33` = water-like refraction
+  - `1.5` = glass-like refraction
+  - `2.0` = strong crystal-like refraction
+
+- **`--variablur-glass-offset`**: Defines the size of the displacement area in pixels
+  - Larger values create wider refraction zones
+  - Typically ranges from `10px` to `50px`
+
+See `examples/refraction.html` for interactive examples and visual demonstrations.
 
 ### Notes
 

@@ -10,8 +10,11 @@
 <body>
     <div>
         <label for="refractionIndex">Refraction Index:</label>
-        <input type="range" id="refractionIndex" min="1.0" max="2.0" step="0.01" value="1.33">
+        <input type="range" id="refractionIndex" min="0.0" max="2.0" step="0.01" value="1.33">
         <span id="refractionValue">1.33</span>
+        <label for="offsetRange" style="margin-left:20px;">Offset:</label>
+        <input type="range" id="offsetRange" min="0" max="100" step="1" value="100">
+        <span id="offsetValue">100</span>
     </div>
     <div style="display: flex; gap: 20px; margin-top: 20px;">
         <div>
@@ -20,17 +23,36 @@
         </div>
         <div>
             <p>Image</p>
-            <img id="sourceImage" src="https://picsum.photos/300" width="300" height="300" alt="Source"
+            <img id="sourceImage" src="grid.jpg" width="300" height="300" alt="Source"
                 style="display:block; border:1px solid #ccc;">
         </div>
         <div>
             <p>Output Image</p>
             <div id="outputContainer" style="position: relative; width: 300px; height: 300px; border: 1px solid #ccc;">
-                <img id="outputImage" src="https://picsum.photos/300" width="300" height="300" alt="Output" style="width: 100%; height: 100%; object-fit: cover;">
-                <div id="variablurOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; --variablur-filter: blur(10px); --variablur-glass-refraction: 1.33; z-index: 9; --variablur-offset:100%;"></div>
+                <img id="outputImage" src="grid.jpg" width="300" height="300" alt="Output"
+                    style="width: 100%; height: 100%; object-fit: cover;">
+                <div id="variablurOverlay"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; --variablur-filter: blur(0px); --variablur-glass-refraction: 1.33; z-index: 9; --variablur-offset:100%;">
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Centered Glass Effect Box -->
+    <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; border: 2px solid rgba(255,255,255,0.3); border-radius: 20px;
+    --variablur-filter: blur(5px);
+    --variablur-glass-refraction: 3;
+    --variablur-glass-offset: 20px;
+    color: black;
+    --variablur-offset: 100%; z-index: 1000; background: rgba(255,255,255,0.1); overflow: hidden;">
+        <div style="padding: 20px; color: white; text-shadow:0 0 5px rgba(0,0,0,0.5);
+         text-align: center; font-family: Arial, sans-serif;">
+            <h3 style="margin: 0 0 10px 0; font-size: 18px;">Glass Effect</h3>
+            <p style="margin: 0; font-size: 14px; opacity: 0.8;">200x200 centered box with variablur glass refraction
+            </p>
+        </div>
+    </div>
+
     <script src="../dist/variablur.js"></script>
     <script type="module">
 
@@ -40,37 +62,62 @@
         const variablurOverlay = document.getElementById('variablurOverlay');
         const outputImage = document.getElementById('outputImage');
         const sourceImage = document.getElementById('sourceImage');
-        const slider = document.getElementById('refractionIndex');
-        const valueLabel = document.getElementById('refractionValue');
+        const refractionSlider = document.getElementById('refractionIndex');
+        const offsetSlider = document.getElementById('offsetRange');
+        const refractionValueLabel = document.getElementById('refractionValue');
+        const offsetValueLabel = document.getElementById('offsetValue');
 
-        function renderRefractionMap(refractionIndex) {
+        // Get the centered glass effect box
+        const glassBox = document.querySelector('div[style*="position: fixed"]');
+
+        function renderRefractionMap(refractionIndex, refractionOffset) {
             const width = refractionCanvas.width;
             const height = refractionCanvas.height;
             const radius = 10;
             // calculateRefractionMap now returns ImageData
-            const imageData = variablur.calculateRefractionMap(refractionIndex, width, height, radius);
+            const imageData = variablur.calculateRefractionMap(refractionIndex, refractionOffset, width, height, radius);
             refractionCtx.putImageData(imageData, 0, 0);
         }
 
-        function renderOutputImage(refractionIndex) {
+        function renderOutputImage(refractionIndex, offsetValue) {
             // Update the variablur overlay with new refraction value
             variablurOverlay.style.setProperty('--variablur-glass-refraction', refractionIndex);
+            variablurOverlay.style.setProperty('--variablur-glass-offset', offsetValue + 'px');
         }
 
         function update() {
-            const refractionIndex = parseFloat(slider.value);
-            renderRefractionMap(refractionIndex);
-            renderOutputImage(refractionIndex);
+            const refractionIndex = parseFloat(refractionSlider.value);
+            const offsetValue = parseFloat(offsetSlider.value);
+            renderRefractionMap(refractionIndex, offsetValue);
+            renderOutputImage(refractionIndex, offsetValue);
         }
 
+        // Add event listeners for both sliders
         sourceImage.onload = update;
-        slider.addEventListener('input', update);
 
+        refractionSlider.addEventListener('input', () => {
+            refractionValueLabel.textContent = refractionSlider.value;
+            update();
+        });
+
+        offsetSlider.addEventListener('input', () => {
+            offsetValueLabel.textContent = offsetSlider.value;
+            update();
+        });
+
+        // Initial update
         if (sourceImage.complete) {
             update();
         }
-        slider.addEventListener('input', () => {
-            valueLabel.textContent = slider.value;
+        // Move the glass box with mouse
+        document.addEventListener('mousemove', (e) => {
+            const boxWidth = glassBox.offsetWidth;
+            const boxHeight = glassBox.offsetHeight;
+            const x = e.clientX - boxWidth / 2;
+            const y = e.clientY - boxHeight / 2;
+            glassBox.style.left = `${x}px`;
+            glassBox.style.top = `${Math.max(20, y)}px`;
+            glassBox.style.transform = 'translate(0, 0)';
         });
     </script>
 </body>
