@@ -1,27 +1,13 @@
 window.DEBUG = process.env.NODE_ENV == 'development';
 console.log("mode", process.env.NODE_ENV)
+
 const debug = {
-    log: (...args) => {
-        if (window.DEBUG) {
-            console.log(...args);
-        }
-    },
-    warn: (...args) => {
-        if (window.DEBUG) {
-            console.warn(...args);
-        }
-    },
-    error: (...args) => {
-        if (window.DEBUG) {
-            console.error(...args);
-        }
-    },
-    info: (...args) => {
-        if (window.DEBUG) {
-            console.info(...args);
-        }
-    }
+    log: window.DEBUG ? console.log : () => {},
+    warn: window.DEBUG ? console.warn : () => {},
+    error: window.DEBUG ? console.error : () => {},
+    info: window.DEBUG ? console.info : () => {}
 }
+
 export default debug;
 export { debug };
 // Example usage

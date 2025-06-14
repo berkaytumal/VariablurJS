@@ -232,45 +232,47 @@ function update(el) {
             layer.style.backgroundColor = color;
             // Glass refraction effect using SVG filter
             if (variablurGlassRefraction) {
-                const { svgString, filterId } = createGlassSVGFilter(el);
-                console.log('Creating glass SVG filter:', filterId);
-                // Add SVG to backdrop container if not already present
-                let svgElement = variablurContainer.querySelector(`#${filterId}`);
-                if (!svgElement) {
-                    // Clean up any existing SVG filters and their blob URLs
-                    const existingSvg = variablurContainer.querySelector('svg[data-variablur-svg]');
-                    if (existingSvg) {
-                        // Clean up old blob URLs
-                        const blobUrls = elementBlobUrls.get(el);
-                        if (blobUrls) {
-                            blobUrls.forEach(url => URL.revokeObjectURL(url));
+                createGlassSVGFilter(el).then(({ svgString, filterId }) => {
+                    console.log('Creating glass SVG filter:', filterId);
+                    // Add SVG to backdrop container if not already present
+                    let svgElement = variablurContainer.querySelector(`#${filterId}`);
+                    if (!svgElement) {
+                        // Clean up any existing SVG filters and their blob URLs
+                        const existingSvg = variablurContainer.querySelector('svg[data-variablur-svg]');
+                        if (existingSvg) {
+                            // Clean up old blob URLs
+                            const blobUrls = elementBlobUrls.get(el);
+                            if (blobUrls) {
+                                blobUrls.forEach(url => URL.revokeObjectURL(url));
+                            }
+                            existingSvg.remove();
                         }
-                        existingSvg.remove();
+
+                        // Create new SVG container
+                        const svgContainer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                        svgContainer.setAttribute('data-variablur-svg', 'true');
+                        svgContainer.style.position = 'absolute';
+                        svgContainer.style.width = '0';
+                        svgContainer.style.height = '0';
+                        svgContainer.style.pointerEvents = 'none';
+                        svgContainer.innerHTML = svgString;
+                        variablurContainer.appendChild(svgContainer);
+
+                        // Apply the filter after SVG is created
+                        const distortionFilter = `url(#${filterId})`;
+                        const currentFilter = layer.style.backdropFilter || '';
+                        if (currentFilter && !currentFilter.includes('url(#')) {
+                            layer.style.backdropFilter = `${currentFilter} ${distortionFilter}`;
+                            layer.style.setProperty('-webkit-backdrop-filter', `${currentFilter} ${distortionFilter}`);
+                        } else if (!currentFilter) {
+                            layer.style.backdropFilter = "blur(0px)";
+                            layer.style.setProperty('-webkit-backdrop-filter', "blur(0px)");
+                            layer.style.filter = distortionFilter;
+                        }
                     }
-
-                    // Create new SVG container
-                    const svgContainer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    svgContainer.setAttribute('data-variablur-svg', 'true');
-                    svgContainer.style.position = 'absolute';
-                    svgContainer.style.width = '0';
-                    svgContainer.style.height = '0';
-                    svgContainer.style.pointerEvents = 'none';
-                    svgContainer.innerHTML = svgString;
-                    variablurContainer.appendChild(svgContainer);
-                }
-
-                const distortionFilter = `url(#${filterId})`;
-
-                // Add glass distortion to existing backdrop filter
-                const currentFilter = layer.style.backdropFilter || '';
-                if (currentFilter && !currentFilter.includes('url(#')) {
-                    layer.style.backdropFilter = `${currentFilter} ${distortionFilter}`;
-                    layer.style.setProperty('-webkit-backdrop-filter', `${currentFilter} ${distortionFilter}`);
-                } else if (!currentFilter) {
-                    layer.style.backdropFilter = "blur(0px)";
-                    layer.style.setProperty('-webkit-backdrop-filter', "blur(0px)");
-                    layer.style.filter = distortionFilter;
-                }
+                }).catch(error => {
+                    console.error('Error creating glass SVG filter:', error);
+                });
             } else {
                 // Remove SVG filter if glass refraction is disabled and clean up blob URLs
                 const existingSvg = variablurContainer.querySelector('svg[data-variablur-svg]');
@@ -390,131 +392,128 @@ function stopElementPolling(el) {
         elementPollingHandles.delete(el);
     }
 }
-
-// --- Glass Refraction SVG Filter ---
-
-function calculateGlassRefractionMap(refraction, offset, width, height, radius) {
-    // Create ImageData for elegant glass displacement map
-    const imageData = new ImageData(width, height);
-    const data = imageData.data;
-    
-    // Glass parameters - optimized for realistic magnifying glass effect
-    const edgeThickness = Math.max(offset || Math.min(width, height) * 0.15, 8);
-    const intensity = Math.max(refraction * 0.8, 0.1); // Refined intensity scaling
-    const centerX = (width - 1) * 0.5;  // Perfect center for symmetric refraction
-    const centerY = (height - 1) * 0.5;
-    
-    // High-performance pixel processing
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const pixelIndex = (y * width + x) * 4;
-            
-            // Elegant edge distance calculation with rounded corners support
-            const distanceFromEdge = radius > 0 
-                ? calculateRoundedEdgeDistance(x, y, width, height, radius)
-                : Math.min(x, width - 1 - x, y, height - 1 - y); // Perfect symmetry
-            
-            // Only process pixels within the glass edge zone
-            if (distanceFromEdge > edgeThickness || distanceFromEdge < 0) {
-                // Neutral displacement for areas outside glass edge
-                data[pixelIndex] = 128;     // Red (horizontal neutral)
-                data[pixelIndex + 1] = 128; // Green (vertical neutral)  
-                data[pixelIndex + 2] = 128; // Blue (unused, neutral)
-                data[pixelIndex + 3] = 255; // Alpha (opaque)
-                continue;
-            }
-            
-            // Elegant magnifying glass falloff - smooth at center, defined at edges
-            const normalizedEdgeDistance = distanceFromEdge / edgeThickness;
-            const glassStrength = createGlassFalloff(normalizedEdgeDistance);
-            
-            // Pure radial displacement for perfect symmetry
-            const dx = x - centerX;
-            const dy = y - centerY;
-            const angle = Math.atan2(dy, dx);
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            // Natural lens distortion with distance-based scaling
-            const maxRadius = Math.min(width, height) * 0.4;
-            const distanceScale = Math.min(1, distance / maxRadius);
-            const lensEffect = smoothStep(distanceScale) * 0.7 + 0.3;
-            
-            // Calculate displacement with chromatic aberration
-            const baseStrength = glassStrength * intensity * lensEffect;
-            const redDisplacement = Math.cos(angle) * baseStrength;
-            const greenDisplacement = Math.sin(angle) * baseStrength;
-            
-            // Subtle chromatic aberration for realism
-            const chromaticAngle = Math.PI / 24; // 7.5 degrees
-            const chromaticStrength = baseStrength * 0.06;
-            const chromaticRed = Math.cos(angle + chromaticAngle) * chromaticStrength;
-            const chromaticGreen = Math.sin(angle - chromaticAngle) * chromaticStrength;
-            
-            // Final displacement values with chromatic offset
-            const finalRedDisplacement = redDisplacement + chromaticRed;
-            const finalGreenDisplacement = greenDisplacement + chromaticGreen;
-            
-            // Convert to displacement map values (128 = neutral, 0-255 range)
-            const amplification = refraction * 100; // Balanced amplification
-            const redValue = clamp(128 + finalRedDisplacement * amplification, 0, 255);
-            const greenValue = clamp(128 + finalGreenDisplacement * amplification, 0, 255);
-            
-            // Set pixel values
-            data[pixelIndex] = Math.round(redValue);
-            data[pixelIndex + 1] = Math.round(greenValue);
-            data[pixelIndex + 2] = 128; // Neutral blue channel
-            data[pixelIndex + 3] = 255; // Full opacity
+class RefractionEditor {
+    imageData = null;
+    constructor(width, height, radius) {
+        this.imageData = new ImageData(width, height);
+        //make all pixels solid with channel separation
+        for (let i = 0; i < this.imageData.data.length; i += 4) {
+            const pixelIndex = Math.floor(i / 4);
+            const base = 127; // Empirically determined neutral value for sRGB color space
+            this.imageData.data[i] = base;     // R - X displacement channel
+            this.imageData.data[i + 1] = base; // G - Y displacement channel
+            this.imageData.data[i + 2] = 0;   // B - unused channel, set to 0 to avoid bleeding
+            this.imageData.data[i + 3] = 255; // A
         }
     }
-    
-    return imageData;
-}
+    static linearToSRGB(x) {
+        return x <= 0.0031308
+            ? 12.92 * x
+            : 1.055 * Math.pow(x, 1 / 2.4) - 0.055;
+    }
 
-// Helper functions for elegant glass calculation
-function calculateRoundedEdgeDistance(x, y, width, height, radius) {
-    const halfWidth = (width - 1) * 0.5;  // Centered coordinate system
-    const halfHeight = (height - 1) * 0.5;
-    const centerX = halfWidth;
-    const centerY = halfHeight;
-    
-    const dx = Math.abs(x - centerX);
-    const dy = Math.abs(y - centerY);
-    
-    // Check if point is in corner radius area
-    const cornerX = Math.max(0, dx - (halfWidth - radius));
-    const cornerY = Math.max(0, dy - (halfHeight - radius));
-    
-    if (cornerX > 0 || cornerY > 0) {
-        // In corner - distance to rounded edge
-        return Math.max(0, radius - Math.sqrt(cornerX * cornerX + cornerY * cornerY));
-    } else {
-        // In straight edge area - symmetric calculation
-        return Math.min(halfWidth - dx, halfHeight - dy);
+    static sRGBToLinear(x) {
+        return x <= 0.04045
+            ? x / 12.92
+            : Math.pow((x + 0.055) / 1.055, 2.4);
+    }
+
+    static fromLinearImageData(linearImageData) {
+        const { width, height, data } = linearImageData;
+        const output = new Uint8ClampedArray(data.length);
+
+        for (let i = 0; i < data.length; i += 4) {
+            for (let j = 0; j < 3; j++) {
+                const lin = data[i + j] / 255;
+                output[i + j] = Math.round(this.linearToSRGB(lin) * 255);
+            }
+            output[i + 3] = data[i + 3]; // alpha
+        }
+
+        return new ImageData(output, width, height);
+    }
+
+    static toLinearImageData(srgbImageData) {
+        const { width, height, data } = srgbImageData;
+        const output = new Uint8ClampedArray(data.length);
+
+        for (let i = 0; i < data.length; i += 4) {
+            for (let j = 0; j < 3; j++) {
+                const s = data[i + j] / 255;
+                output[i + j] = Math.round(this.sRGBToLinear(s) * 255);
+            }
+            output[i + 3] = data[i + 3]; // alpha
+        }
+
+        return new ImageData(output, width, height);
+    }
+    addTransformation(vx, vy, direction, dx, dy, dw, dh, easing = (x) => x) {
+        const data = this.imageData.data;
+
+        // Iterate through each pixel in the rectangle
+        for (let y = dy; y < dy + dh; y++) {
+            for (let x = dx; x < dx + dw; x++) {
+                // Skip if outside image bounds
+                if (x < 0 || y < 0 || x >= this.imageData.width || y >= this.imageData.height) continue;
+
+                // Calculate gradient segment based on direction
+                let gradientSegment = 0;
+                switch (direction.toLowerCase()) {
+                    case 'down':
+                        gradientSegment = (y - dy) / dh; // top to bottom
+                        break;
+                    case 'up':
+                    case 'top':
+                        gradientSegment = (dh - (y - dy)) / dh; // bottom to top
+                        break;
+                    case 'right':
+                        gradientSegment = (x - dx) / dw; // left to right
+                        break;
+                    case 'left':
+                        gradientSegment = (dw - (x - dx)) / dw; // right to left
+                        break;
+                    default:
+                        gradientSegment = (y - dy) / dh; // default to down
+                }
+
+                // Clamp gradient segment to 0-1 range
+                gradientSegment = Math.max(0, Math.min(1, gradientSegment));
+
+                // Calculate pixel index
+                const pixelIndex = (y * this.imageData.width + x) * 4;
+
+                // Get current R and G values (X and Y displacement channels)
+                let r = data[pixelIndex];     // R channel for X displacement
+                let g = data[pixelIndex + 1]; // G channel for Y displacement
+
+                // Calculate vx and vy values using functions
+                var vxValue = typeof vx === 'function' ? vx(x, y, dw, dh) : vx;
+                var vyValue = typeof vy === 'function' ? vy(x, y, dw, dh) : vy;
+
+                // Apply transformation to specific channels
+                r += 127 * vxValue * easing(gradientSegment); // X displacement goes to R channel
+                g += 127 * vyValue * easing(gradientSegment); // Y displacement goes to G channel
+
+                // Clamp values to 0-255 range and update only the channels we're using
+                this.imageData.data[pixelIndex] = Math.max(0, Math.min(255, Math.round(r)));     // R channel
+                this.imageData.data[pixelIndex + 1] = Math.max(0, Math.min(255, Math.round(g))); // G channel
+                // Leave B channel (index 2) and A channel (index 3) unchanged
+            }
+        }
+    }
+    getImageData() {
+        return RefractionEditor.fromLinearImageData(this.imageData);
     }
 }
-
-function createGlassFalloff(normalizedDistance) {
-    // Elegant glass falloff: strong at edges, smooth fade to center
-    const t = 1 - normalizedDistance; // Invert: 1 at edge, 0 at center
-    
-    // Combine exponential curve (for edge definition) with smooth transition
-    const edgeDefinition = Math.pow(t, 1.8); // Sharp at edges
-    const smoothTransition = (1 - Math.cos(t * Math.PI)) * 0.5; // Smooth S-curve
-    
-    // Blend for optimal glass appearance
-    return edgeDefinition * 0.75 + smoothTransition * 0.25;
+// --- Glass Refraction SVG Filter ---
+function calculateGlassRefractionMap(refraction, offset, width, height, radius) {
+    const refractionEditor = new RefractionEditor(width, height, radius);
+    refractionEditor.addTransformation(0, 1, 'top', 0, 0, width, offset)
+    return refractionEditor.getImageData();
 }
 
-function smoothStep(t) {
-    // Smooth interpolation function
-    return t * t * (3 - 2 * t);
-}
 
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-
-function createGlassSVGFilter(el) {
+async function createGlassSVGFilter(el) {
     const width = el ? el.offsetWidth : 100;
     const height = el ? el.offsetHeight : 100;
     // Use a stable ID based on element and size to avoid regenerating filters unnecessarily
@@ -526,42 +525,58 @@ function createGlassSVGFilter(el) {
     const offsetValue = parseFloat(style.getPropertyValue('--variablur-glass-offset')) || 0;
     const borderRadius = parseFloat(window.getComputedStyle(el).borderRadius) || 0;
     const imageData = calculateGlassRefractionMap(refractionValue, offsetValue, width, height, borderRadius);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    // Convert ImageData to Blob with canvasto blob
+    const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');
+    //canvas color space is srgb
+    
+
     ctx.putImageData(imageData, 0, 0);
+    const blob = await canvas.convertToBlob({ type: 'image/png' });
+    // Create a blob URL
+    const dataURL = URL.createObjectURL(blob);
+    // Store the blob URL in the element for cleanup later
+    let blobUrls = elementBlobUrls.get(el) || [];
+    blobUrls.push(dataURL);
+    elementBlobUrls.set(el, blobUrls);
 
-    // Clean up any previous blob URLs for this element
-    let blobUrls = elementBlobUrls.get(el);
-    if (!blobUrls) {
-        blobUrls = [];
-        elementBlobUrls.set(el, blobUrls);
+    // Auto cleanup - revoke the blob URL when filter is regenerated or element is detached
+    // Store cleanup function for later use
+    if (!el.variablurCleanupCallbacks) {
+        el.variablurCleanupCallbacks = new Set();
     }
 
-    // Revoke previous blob URLs for this element to avoid memory leaks
-    while (blobUrls.length) {
-        URL.revokeObjectURL(blobUrls.pop());
-    }
+    const cleanupCallback = () => {
+        URL.revokeObjectURL(dataURL);
+        const currentUrls = elementBlobUrls.get(el) || [];
+        const updatedUrls = currentUrls.filter(url => url !== dataURL);
+        if (updatedUrls.length === 0) {
+            elementBlobUrls.delete(el);
+        } else {
+            elementBlobUrls.set(el, updatedUrls);
+        }
+    };
 
-    // Create new blob URL for the displacement map
-    const dataUrl = canvas.toDataURL('image/png');
-    const byteString = atob(dataUrl.split(',')[1]);
-    const mimeString = dataUrl.split(',')[0].split(':')[1].split(';')[0];
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-    }
-    const blob = new Blob([ab], { type: mimeString });
-    const mapUrl = URL.createObjectURL(blob);
-    blobUrls.push(mapUrl);
+    el.variablurCleanupCallbacks.add(cleanupCallback);
 
-    // SVG filter string using feImage for displacement map
+    // Clean up previous blob URLs when creating new ones
+    if (el.variablurCleanupCallbacks.size > 1) {
+        const callbacks = Array.from(el.variablurCleanupCallbacks);
+        callbacks.slice(0, -1).forEach(callback => {
+            callback();
+            el.variablurCleanupCallbacks.delete(callback);
+        });
+    }
+    window.openDataURL = () => {
+        //open data uri in new tab as direct url
+
+        window.open(dataURL, '_blank');
+
+    };
     const svgString = `
-      <filter id="${filterId}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-        <feImage result="FEIMG" href="${mapUrl}"/>
-        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="40" xChannelSelector="R" yChannelSelector="G" />
+      <filter id="${filterId}" x="0" y="0" width="100%" height="100%">
+        <feImage result="FEIMG" href="${dataURL}"/>
+        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" yChannelSelector="G" xChannelSelector="R"/>
       </filter>
     `;
     return { svgString, filterId };
