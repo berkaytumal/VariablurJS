@@ -603,7 +603,7 @@ async function createGlassSVGFilter(el) {
     const svgString = `
       <filter id="${filterId}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
         <feImage result="FEIMG" href="${dataURL}"/>
-        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" yChannelSelector="B" xChannelSelector="G"/>
+        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" yChannelSelector="B" xChannelSelector="R"/>
       </filter>
     `;
     return { svgString, filterId };
