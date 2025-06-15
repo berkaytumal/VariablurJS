@@ -402,7 +402,7 @@ class RefractionEditor {
             const base = 127; // Empirically determined neutral value for sRGB color space
             this.imageData.data[i] = base;     // R - X displacement channel
             this.imageData.data[i + 1] = base; // G - Y displacement channel
-            this.imageData.data[i + 2] = 0;   // B - unused channel, set to 0 to avoid bleeding
+            this.imageData.data[i + 2] = base;   // B - unused channel, set to 0 to avoid bleeding
             this.imageData.data[i + 3] = 255; // A
         }
     }
@@ -489,6 +489,7 @@ class RefractionEditor {
                 // Calculate vx and vy values using functions
                 var vxValue = typeof vx === 'function' ? vx(x, y, dw, dh) : vx;
                 var vyValue = typeof vy === 'function' ? vy(x, y, dw, dh) : vy;
+                // vxValue -= vyValue * .125
 
                 // Apply transformation to specific channels
                 r += 127 * vxValue * easing(gradientSegment); // X displacement goes to R channel
@@ -502,13 +503,39 @@ class RefractionEditor {
         }
     }
     getImageData() {
-        return RefractionEditor.fromLinearImageData(this.imageData);
+        return this.imageData;
     }
 }
 // --- Glass Refraction SVG Filter ---
 function calculateGlassRefractionMap(refraction, offset, width, height, radius) {
+    offset /= 2
+    refraction /= 2
     const refractionEditor = new RefractionEditor(width, height, radius);
-    refractionEditor.addTransformation(0, 1, 'top', 0, 0, width, offset)
+    console.log("refractionEditor", refraction);
+    refractionEditor.addTransformation(0, 1 * refraction, 'top', 0, 0, width, offset, (x) => Math.pow(x, 1));
+    refractionEditor.addTransformation(0, -1 * refraction, 'bottom', 0, height - offset, width, offset, (x) => Math.pow(x, 1));
+    //now left and rigght
+    refractionEditor.addTransformation(1 * refraction, 0, 'left', 0, 0, offset, height, (x) => Math.pow(x, 1));
+    refractionEditor.addTransformation(-1 * refraction, 0, 'right', width - offset, 0, offset, height, (x) => Math.pow(x, 1));
+
+    refractionEditor.addTransformation((x, y, w, h) => {
+        const centerX = w / 2;
+        return -(x - centerX) / centerX * refraction * .75;
+    }, 0, 'top', 0, 0, width, offset * 2, (x) => Math.pow(x, 2));
+    refractionEditor.addTransformation((x, y, w, h) => {
+        const centerX = w / 2;
+        return -(x - centerX) / centerX * refraction * .75;
+    }, 0, 'bottom', 0, height - offset * 2, width, offset * 2, (x) => Math.pow(x, 2));
+    //now left and right
+    refractionEditor.addTransformation(0, (x, y, w, h) => {
+        const centerY = h / 2;
+        return -(y - centerY) / centerY * refraction * .75;
+    }, 'left', 0, 0, offset * 2, height, (x) => Math.pow(x, 2));
+    refractionEditor.addTransformation(0, (x, y, w, h) => {
+        const centerY = h / 2;
+        return -(y - centerY) / centerY * refraction * .75;
+    }, 'right', width - offset * 2, 0, offset * 2, height, (x) => Math.pow(x, 2));
+
     return refractionEditor.getImageData();
 }
 
@@ -529,7 +556,7 @@ async function createGlassSVGFilter(el) {
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');
     //canvas color space is srgb
-    
+
 
     ctx.putImageData(imageData, 0, 0);
     const blob = await canvas.convertToBlob({ type: 'image/png' });
@@ -574,7 +601,7 @@ async function createGlassSVGFilter(el) {
 
     };
     const svgString = `
-      <filter id="${filterId}" x="0" y="0" width="100%" height="100%">
+      <filter id="${filterId}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
         <feImage result="FEIMG" href="${dataURL}"/>
         <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" yChannelSelector="G" xChannelSelector="R"/>
       </filter>
