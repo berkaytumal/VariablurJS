@@ -401,8 +401,8 @@ class RefractionEditor {
             const pixelIndex = Math.floor(i / 4);
             const base = 127; // Empirically determined neutral value for sRGB color space
             this.imageData.data[i] = base;     // R - X displacement channel
-            this.imageData.data[i + 1] = base; // G - Y displacement channel
-            this.imageData.data[i + 2] = base;   // B - unused channel, set to 0 to avoid bleeding
+            this.imageData.data[i + 1] = base; // G - unused channel
+            this.imageData.data[i + 2] = base; // B - Y displacement channel
             this.imageData.data[i + 3] = 255; // A
         }
     }
@@ -482,9 +482,9 @@ class RefractionEditor {
                 // Calculate pixel index
                 const pixelIndex = (y * this.imageData.width + x) * 4;
 
-                // Get current R and G values (X and Y displacement channels)
+                // Get current R and B values (X and Y displacement channels)
                 let r = data[pixelIndex];     // R channel for X displacement
-                let g = data[pixelIndex + 1]; // G channel for Y displacement
+                let b = data[pixelIndex + 2]; // B channel for Y displacement
 
                 // Calculate vx and vy values using functions
                 var vxValue = typeof vx === 'function' ? vx(x, y, dw, dh) : vx;
@@ -493,12 +493,12 @@ class RefractionEditor {
 
                 // Apply transformation to specific channels
                 r += 127 * vxValue * easing(gradientSegment); // X displacement goes to R channel
-                g += 127 * vyValue * easing(gradientSegment); // Y displacement goes to G channel
+                b += 127 * vyValue * easing(gradientSegment); // Y displacement goes to B channel
 
                 // Clamp values to 0-255 range and update only the channels we're using
                 this.imageData.data[pixelIndex] = Math.max(0, Math.min(255, Math.round(r)));     // R channel
-                this.imageData.data[pixelIndex + 1] = Math.max(0, Math.min(255, Math.round(g))); // G channel
-                // Leave B channel (index 2) and A channel (index 3) unchanged
+                this.imageData.data[pixelIndex + 2] = Math.max(0, Math.min(255, Math.round(b))); // B channel
+                // Leave G channel (index 1) and A channel (index 3) unchanged
             }
         }
     }
@@ -603,7 +603,7 @@ async function createGlassSVGFilter(el) {
     const svgString = `
       <filter id="${filterId}" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
         <feImage result="FEIMG" href="${dataURL}"/>
-        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" yChannelSelector="G" xChannelSelector="R"/>
+        <feDisplacementMap in="SourceGraphic" in2="FEIMG" scale="127" yChannelSelector="B" xChannelSelector="G"/>
       </filter>
     `;
     return { svgString, filterId };
