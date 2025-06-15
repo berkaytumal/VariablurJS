@@ -396,9 +396,11 @@ class RefractionEditor {
     imageData = null;
     constructor(width, height, radius) {
         this.imageData = new ImageData(width, height);
+        this.width = width;
+        this.height = height;
+        this.radius = radius;
         //make all pixels solid with channel separation
         for (let i = 0; i < this.imageData.data.length; i += 4) {
-            const pixelIndex = Math.floor(i / 4);
             const base = 127; // Empirically determined neutral value for sRGB color space
             this.imageData.data[i] = base;     // R - X displacement channel
             this.imageData.data[i + 1] = base; // G - unused channel
@@ -502,40 +504,131 @@ class RefractionEditor {
             }
         }
     }
+    /**
+     * Compute the local normal and border distance for a given pixel (x, y)
+     * Returns: { nx, ny, distToBorder, isCorner }
+     */
+    getBorderNormalAndDistance(x, y) {
+        const w = this.width;
+        const h = this.height;
+        const r = Math.max(0, Math.min(this.radius, Math.min(w, h) / 2));
+        // Clamp radius to valid range
+        // Determine which corner (if any) the pixel is in
+        let isCorner = false;
+        let cx = 0, cy = 0;
+        // Top-left
+        if (x < r && y < r) {
+            isCorner = true;
+            cx = r;
+            cy = r;
+        }
+        // Top-right
+        else if (x >= w - r && y < r) {
+            isCorner = true;
+            cx = w - r - 1;
+            cy = r;
+        }
+        // Bottom-left
+        else if (x < r && y >= h - r) {
+            isCorner = true;
+            cx = r;
+            cy = h - r - 1;
+        }
+        // Bottom-right
+        else if (x >= w - r && y >= h - r) {
+            isCorner = true;
+            cx = w - r - 1;
+            cy = h - r - 1;
+        }
+        if (isCorner) {
+            // Vector from center of corner circle to pixel
+            const dx = x - cx;
+            const dy = y - cy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Normalized normal vector (pointing outward)
+            let nx = dx / (dist || 1);
+            let ny = dy / (dist || 1);
+            // Distance to border: how far from the arc
+            const distToBorder = r - dist;
+            return { nx, ny, distToBorder, isCorner: true };
+        } else {
+            // Not in a corner: find closest edge
+            // For each edge, compute distance and normal
+            // Top edge
+            if (y < r) {
+                return { nx: 0, ny: -1, distToBorder: y, isCorner: false };
+            }
+            // Bottom edge
+            if (y >= h - r) {
+                return { nx: 0, ny: 1, distToBorder: h - 1 - y, isCorner: false };
+            }
+            // Left edge
+            if (x < r) {
+                return { nx: -1, ny: 0, distToBorder: x, isCorner: false };
+            }
+            // Right edge
+            if (x >= w - r) {
+                return { nx: 1, ny: 0, distToBorder: w - 1 - x, isCorner: false };
+            }
+            // Center region: no border effect
+            // Find min distance to any edge
+            const minDist = Math.min(x, y, w - 1 - x, h - 1 - y);
+            // Default normal: up
+            return { nx: 0, ny: 0, distToBorder: minDist, isCorner: false };
+        }
+    }
+
+    /**
+     * Apply a border-radius-aware refraction transformation to the whole image
+     * @param {number} refractionStrength - max refraction at border
+     * @param {number} borderWidth - width of the border region (in px) where refraction is applied
+     * @param {function} [falloff] - optional function for falloff (default: quadratic)
+     */
+    applyBorderRadiusRefraction(refractionStrength, borderWidth, falloff) {
+        const data = this.imageData.data;
+        const w = this.width;
+        const h = this.height;
+        const r = Math.max(0, Math.min(this.radius, Math.min(w, h) / 2));
+        if (!falloff) {
+            // Quadratic falloff by default
+            falloff = (d) => d * d;
+        }
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const { nx, ny, distToBorder } = this.getBorderNormalAndDistance(x, y);
+                // Only apply if within borderWidth from the border (arc or edge)
+                let borderDist = Math.max(0, Math.min(borderWidth, distToBorder));
+                let t = 1 - borderDist / (borderWidth || 1); // 1 at border, 0 at inner edge
+                t = Math.max(0, Math.min(1, t));
+                t = falloff(t);
+                // Compute displacement
+                const dx = nx * refractionStrength * t;
+                const dy = ny * refractionStrength * t;
+                // Write to R/B channels
+                const pixelIndex = (y * w + x) * 4;
+                let rVal = data[pixelIndex];
+                let bVal = data[pixelIndex + 2];
+                // Center value is 127, so add displacement scaled to [-127,127]
+                rVal += 127 * dx;
+                bVal += 127 * dy;
+                data[pixelIndex] = Math.max(0, Math.min(255, Math.round(rVal)));
+                data[pixelIndex + 2] = Math.max(0, Math.min(255, Math.round(bVal)));
+            }
+        }
+    }
     getImageData() {
         return this.imageData;
     }
 }
 // --- Glass Refraction SVG Filter ---
 function calculateGlassRefractionMap(refraction, offset, width, height, radius) {
-    offset /= 2
-    refraction /= 2
+    offset /= 2;
+    refraction /= 2;
     const refractionEditor = new RefractionEditor(width, height, radius);
-    console.log("refractionEditor", refraction);
-    refractionEditor.addTransformation(0, 1 * refraction, 'top', 0, 0, width, offset, (x) => Math.pow(x, 1));
-    refractionEditor.addTransformation(0, -1 * refraction, 'bottom', 0, height - offset, width, offset, (x) => Math.pow(x, 1));
-    //now left and rigght
-    refractionEditor.addTransformation(1 * refraction, 0, 'left', 0, 0, offset, height, (x) => Math.pow(x, 1));
-    refractionEditor.addTransformation(-1 * refraction, 0, 'right', width - offset, 0, offset, height, (x) => Math.pow(x, 1));
-
-    refractionEditor.addTransformation((x, y, w, h) => {
-        const centerX = w / 2;
-        return -(x - centerX) / centerX * refraction * .75;
-    }, 0, 'top', 0, 0, width, offset * 2, (x) => Math.pow(x, 2));
-    refractionEditor.addTransformation((x, y, w, h) => {
-        const centerX = w / 2;
-        return -(x - centerX) / centerX * refraction * .75;
-    }, 0, 'bottom', 0, height - offset * 2, width, offset * 2, (x) => Math.pow(x, 2));
-    //now left and right
-    refractionEditor.addTransformation(0, (x, y, w, h) => {
-        const centerY = h / 2;
-        return -(y - centerY) / centerY * refraction * .75;
-    }, 'left', 0, 0, offset * 2, height, (x) => Math.pow(x, 2));
-    refractionEditor.addTransformation(0, (x, y, w, h) => {
-        const centerY = h / 2;
-        return -(y - centerY) / centerY * refraction * .75;
-    }, 'right', width - offset * 2, 0, offset * 2, height, (x) => Math.pow(x, 2));
-
+    // Use the new border-radius-aware refraction for the border region
+    // The borderWidth is offset (how far the effect should reach inwards)
+    // The refractionStrength is refraction (max at border)
+    refractionEditor.applyBorderRadiusRefraction(refraction, offset, (t) => t * t); // quadratic falloff
     return refractionEditor.getImageData();
 }
 
