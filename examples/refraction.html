@@ -81,7 +81,7 @@
         function renderRefractionMap(refractionIndex, refractionOffset) {
             const width = refractionCanvas.width;
             const height = refractionCanvas.height;
-            const radius = 10;
+            const radius = document.querySelector("#borderRadiusRange").value;
             // calculateRefractionMap now returns ImageData
             const imageData = variablur.calculateRefractionMap(refractionIndex, refractionOffset, width, height, radius);
             refractionCtx.putImageData(imageData, 0, 0);
