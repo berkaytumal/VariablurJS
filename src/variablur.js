@@ -621,14 +621,23 @@ class RefractionEditor {
     }
 }
 // --- Glass Refraction SVG Filter ---
-function calculateGlassRefractionMap(refraction, offset, width, height, radius) {
-    offset /= 2;
+function calculateRefractionMap(refraction, width, height, radius) {
     refraction /= 2;
     const refractionEditor = new RefractionEditor(width, height, radius);
     // Use the new border-radius-aware refraction for the border region
     // The borderWidth is offset (how far the effect should reach inwards)
     // The refractionStrength is refraction (max at border)
-    refractionEditor.applyBorderRadiusRefraction(refraction, offset, (t) => t * t); // quadratic falloff
+    //refractionEditor.applyBorderRadiusRefraction(refraction, offset, (t) => t * t); // quadratic falloff
+    console.log("refractionEditor", refraction);
+    var offset = height / 2
+    refractionEditor.addTransformation(0, 1 * refraction, 'top', 0, 0, width, offset, (x) => Math.pow(x, 1));
+    refractionEditor.addTransformation(0, -1 * refraction, 'bottom', 0, height - offset, width, offset, (x) => Math.pow(x, 1));
+    //now left and rigght
+    offset = width / 2;
+    refractionEditor.addTransformation(1 * refraction, 0, 'left', 0, 0, offset, height, (x) => Math.pow(x, 1));
+    refractionEditor.addTransformation(-1 * refraction, 0, 'right', width - offset, 0, offset, height, (x) => Math.pow(x, 1));
+
+
     return refractionEditor.getImageData();
 }
 
@@ -642,9 +651,9 @@ async function createGlassSVGFilter(el) {
     // Get refraction and offset from element's CSS variables
     const style = window.getComputedStyle(el);
     const refractionValue = parseFloat(style.getPropertyValue('--variablur-glass-refraction')) || 0;
-    const offsetValue = parseFloat(style.getPropertyValue('--variablur-glass-offset')) || 0;
-    const borderRadius = parseFloat(window.getComputedStyle(el).borderRadius) || 0;
-    const imageData = calculateGlassRefractionMap(refractionValue, offsetValue, width, height, borderRadius);
+    var offsetValue = style.getPropertyValue('--variablur-glass-offset').trim();
+    var borderRadius = parseFloat(window.getComputedStyle(el).borderRadius) || 0;
+    const imageData = calculateRefractionMap(refractionValue, width, height, borderRadius);
     // Convert ImageData to Blob with canvasto blob
     const canvas = new OffscreenCanvas(width, height);
     const ctx = canvas.getContext('2d');
@@ -652,6 +661,29 @@ async function createGlassSVGFilter(el) {
 
 
     ctx.putImageData(imageData, 0, 0);
+    ctx.fillStyle = "rgb(127, 127, 127)"; // Neutral gray for refraction
+    // Fill the canvas with neutral gray for proper mask
+    // Apply border radius if specified
+    const canvas2 = new OffscreenCanvas(width, height);
+    const ctx2 = canvas2.getContext('2d');
+    ctx2.fillStyle = "rgb(127, 127, 127)"; //
+    if (borderRadius > 0) {
+        ctx2.beginPath();
+        ctx2.roundRect(0, 0, width, height, borderRadius);
+        ctx2.clip();
+    }
+    ctx2.fillRect(0, 0, width, height);
+    if (offsetValue.endsWith('px')) {
+        offsetValue = parseFloat(offsetValue);
+    } else if (offsetValue.endsWith('%')) {
+        offsetValue = (Math.min(width, height) / 100 * parseFloat(offsetValue))
+    }
+
+    ctx.filter = `blur(${offsetValue}px)`
+    ctx.drawImage(canvas2, 0, 0, width, height);
+
+
+
     const blob = await canvas.convertToBlob({ type: 'image/png' });
     // Create a blob URL
     const dataURL = URL.createObjectURL(blob);
@@ -731,7 +763,7 @@ const variablur = {
     startPolling,
     stopPolling,
     createGlassSVGFilter,
-    calculateRefractionMap: calculateGlassRefractionMap
+    calculateRefractionMap
 };
 
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {

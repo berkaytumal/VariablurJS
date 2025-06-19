@@ -54,7 +54,7 @@
                 <img id="outputImage" src="grid.jpg" width="300" height="300" alt="Output"
                     style="width: 100%; height: 100%; object-fit: cover;">
                 <div id="variablurOverlay"
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; --variablur-filter: blur(0px); --variablur-glass-refraction: 1.33; --variablur-glass-offset: 50px; z-index: 9; --variablur-offset: 100%; border-radius: 20px; overflow: hidden;">
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; --variablur-filter: blur(0px); --variablur-glass-refraction: 1.33; --variablur-glass-offset: 10%; z-index: 9; --variablur-offset: 10%; border-radius: 20px; overflow: hidden;">
                 </div>
             </div>
         </div>
@@ -64,12 +64,12 @@
     <div style="
     pointer-events: none;
     position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 200px; border: 2px solid rgba(255,255,255,0.3); border-radius: 20px;
-    --variablur-filter: blur(5px) brightness(.9)  contrast(1.1) saturate(2);
+    --variablur-filter: blur(2px) brightness(.9)  contrast(1.1) saturate(2);
     box-shadow:  0px 20px 50px rgba(0,0,0,.3), inset  0px -20px 50px rgba(0,0,0,.1);
     border: 2px solid rgba(255,255,255,.3);
     background-color: rgb(255,255,255,.2);
-    --variablur-glass-refraction: 1.5;
-    --variablur-glass-offset: 20px;
+    --variablur-glass-refraction: 2;
+    --variablur-glass-offset: 5%;
     color: black;
     --variablur-offset: 100%; z-index: 1000; background: rgba(255,255,255,0.1); overflow: hidden;">
         <div style="padding: 20px; color: white; text-shadow:0 0 5px rgba(0,0,0,0.5);
@@ -104,7 +104,7 @@
             const height = refractionCanvas.height;
             const radius = document.querySelector("#borderRadiusRange").value;
             // calculateRefractionMap now returns ImageData
-            const imageData = variablur.calculateRefractionMap(refractionIndex, refractionOffset, width, height, radius);
+            const imageData = variablur.calculateRefractionMap(refractionIndex, width, height, radius);
             refractionCtx.putImageData(imageData, 0, 0);
         }
 
