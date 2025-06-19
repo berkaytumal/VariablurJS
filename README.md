@@ -8,7 +8,6 @@ Variable blur and filter utility for web overlays, inspired by iOS and original 
 
 [View Demo 2](https://html-preview.github.io/?url=https://github.com/berkaytumal/VariablurJS/blob/main/examples/demo2.html)
 
-[View Demo 3](https://html-preview.github.io/?url=https://github.com/berkaytumal/VariablurJS/blob/main/examples/demo3.html)
 
 [View Refraction Demo](https://html-preview.github.io/?url=https://github.com/berkaytumal/VariablurJS/blob/main/examples/refraction.html)
 

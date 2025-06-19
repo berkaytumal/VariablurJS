@@ -8,193 +8,118 @@
 </head>
 
 <body>
-    <div style="
-        position: fixed;
-        left: 0px;
-        top: 0px; 
-        width: 100%; 
-        height: 100px;
-        --variablur-filter: blur(10px) saturate(2);
-        --variablur-direction:bottom;
-        --variablur-offset:50%;
-        --variablur-color:rgba(255, 255, 255, 0.25);
-    ">
-        <h1>Title</h1>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            padding-top: 200px;
+
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 50px;
+            color: rgba(255, 255, 255, 0.8);
+            text-shadow: 0px 10px 20px rgba(0, 0, 0, 0.25);
+        }
+
+        img {
+            display: block;
+            margin: 20px auto;
+        }
+
+
+        p {
+            max-width: 800px;
+            margin: 20px auto;
+            line-height: 1.6;
+        }
+
+        body>div {
+            position: fixed;
+            left: 0px;
+            top: 0px;
+            width: 100%;
+            height: 200px;
+            --variablur-filter: blur(50px) saturate(2) brightness(.25);
+            --variablur-direction: bottom;
+            --variablur-offset: 0%;
+            --variablur-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #glassbox {
+            position: absolute;
+            width: 200px;
+            height: 50px;
+            left: 50%;
+            top: 40%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1.5px solid rgba(255, 255, 255, 0.18);
+            --variablur-filter: blur(18px) brightness(1.2) contrast(1.2) saturate(1.5);
+            --variablur-direction: bottom;
+            --variablur-offset: 100%;
+            --variablur-color: rgba(255, 255, 255, 0.18);
+            --variablur-glass-refraction: 2;
+            --variablur-glass-offset: 100px;
+            overflow: hidden;
+            animation: glassbox 10s ease-in-out infinite;
+            border-radius: 20px;
+            box-shadow: 0px 20px 50px rgba(0, 0, 0, .3), inset 0px -20px 50px rgba(0, 0, 0, .1);
+            border: 2px solid rgba(255, 255, 255, .3);
+            background-color: rgb(255, 255, 255, .2);
+            --variablur-filter: blur(2px) brightness(.9) contrast(1.1) saturate(2);
+            --variablur-glass-refraction: 2;
+            --variablur-glass-offset: 5%;
+            --variablur-offset: 100%;
+            color: black;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #glassbox input {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            width: 300px;
+            background: transparent;
+            color: white;
+
+        }
+    </style>
+    <div>
+        <h1>That's some good ah blur!</h1>
+        <div style="text-align: center; margin-top: 20px;" id="glassbox" style="
+           border-radius: 20px;
+            box-shadow: 0px 20px 50px rgba(0, 0, 0, .3), inset 0px -20px 50px rgba(0, 0, 0, .1);
+            border: 2px solid rgba(255, 255, 255, .3);
+            background-color: rgb(255, 255, 255, .2);
+            --variablur-filter: blur(2px) brightness(.9) contrast(1.1) saturate(2);
+            --variablur-glass-refraction: 2;
+            --variablur-glass-offset: 5%;
+            --variablur-offset: 100%;
+            color: black;
+            z-index: 1000;
+            width: 200px;
+            max-width: 200px;
+            overflow: hidden;
+            height: 50px;">
+            <input type="text" placeholder="Search..." />
+        </div>
     </div>
-    <h1 style="margin-top: 100px">Variable Blur (Scroll Me!)</h1>
+    <img src="https://ontheworldmap.com/usa/state/california/california-map.jpg" width="100%">
     <img src="https://picsum.photos/300/200" width="100%">
     <img src="https://picsum.photos/300/200?1" width="100%">
-    <p>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam lacinia
-        est eros, quis hendrerit nunc suscipit sit amet. Aliquam a ipsum convallis
-        risus pellentesque euismod. Suspendisse tempus non ligula sed fermentum.
-        Fusce quis diam eget odio ultricies pellentesque. Duis pulvinar ut turpis
-        ac congue. Donec vehicula nunc in eros ultrices, at vehicula nulla
-        euismod. Sed vel elit ligula. Vestibulum massa lectus, tincidunt quis
-        porttitor at, posuere auctor massa. Vivamus et orci sit amet dolor
-        pulvinar malesuada. Quisque id cursus erat. Nullam ut leo nec eros
-        tincidunt ornare. Pellentesque tempus lobortis velit quis euismod. Quisque
-        ornare non arcu at sollicitudin. Morbi augue risus, scelerisque elementum
-        lorem vitae, pharetra maximus urna. Orci varius natoque penatibus et
-        magnis dis parturient montes, nascetur ridiculus mus. Nunc quis feugiat
-        nisl, ut sollicitudin lorem. Vivamus facilisis erat et ultrices iaculis.
-        Nulla dapibus lacinia magna in maximus. Etiam luctus, ligula ac suscipit
-        dapibus, mauris elit varius lorem, ut vulputate sapien tellus eu nulla.
-        Nam a orci ac justo porta vulputate quis vel leo. Vestibulum ante ipsum
-        primis in faucibus orci luctus et ultrices posuere cubilia curae; Aliquam
-        urna nulla, dapibus eget lorem suscipit, tincidunt iaculis elit. Fusce
-        quis vehicula sem. In semper nulla ut erat consectetur congue. Ut enim
-        orci, rutrum eget iaculis ut, consectetur ac est. Curabitur in odio erat.
-        Morbi viverra nisl quis tortor interdum, a tincidunt est maximus.
-        Suspendisse arcu ipsum, gravida a imperdiet ac, bibendum ut ipsum. Donec
-        euismod mi pharetra scelerisque luctus. Nulla non eleifend lectus. Etiam
-        at magna magna. Proin et aliquam velit, vel tincidunt sem. Nunc ornare
-        finibus sapien in hendrerit. Donec dignissim in lacus molestie commodo.
-        Sed a elit in diam molestie malesuada sit amet in enim. Ut scelerisque,
-        velit non finibus condimentum, arcu purus blandit ipsum, vitae pulvinar
-        purus nibh quis lorem. Vivamus pretium tempus tortor vel maximus. Cras
-        eros tortor, euismod non risus vitae, volutpat blandit est. Donec felis
-        felis, viverra dapibus ullamcorper semper, malesuada id sem. Ut maximus
-        efficitur mauris. Integer pharetra congue nunc, sed placerat magna
-        tristique id. Suspendisse pretium semper ligula eget pharetra. Curabitur
-        ut sollicitudin libero. Nunc at posuere odio, non dictum risus. Donec non
-        ante odio. Donec nec eros libero. Nam suscipit lectus ut lacus consequat
-        euismod. Donec id justo et eros suscipit pharetra. Nam eget urna
-        venenatis, gravida orci ac, aliquet elit. Ut eget mi convallis,
-        sollicitudin tortor non, imperdiet felis. Sed auctor accumsan lectus, in
-        mattis ex maximus nec. Quisque vulputate porttitor justo at mollis. Donec
-        congue dolor at metus semper lacinia. Fusce id malesuada ligula, non
-        rutrum diam. Donec eget mauris in odio placerat porta eu nec enim. Proin
-        non vulputate odio. Praesent dui eros, molestie lobortis arcu feugiat,
-        mattis placerat neque. Aenean vel mollis sapien, id aliquam nisl.
-        Curabitur pellentesque ornare nisl in molestie. Fusce eget facilisis
-        velit, non placerat nibh. Etiam eu efficitur enim, sed consequat nulla.
-        Aliquam fringilla tincidunt ante, quis auctor nunc efficitur eu. Proin et
-        dictum magna. Curabitur mauris elit, fermentum a erat et, consequat
-        efficitur orci. Pellentesque eget purus eget est efficitur ultricies.
-        Phasellus commodo mi ac felis elementum euismod. In ac ex orci. Etiam
-        scelerisque libero vel massa venenatis scelerisque. Donec varius massa
-        purus, vitae placerat eros vehicula a. Etiam vehicula leo dignissim ipsum
-        feugiat, at ornare turpis facilisis. Aliquam in fringilla dui. Curabitur
-        lacinia ex in ante auctor aliquet. Pellentesque id nulla ut ipsum
-        convallis facilisis fermentum non ante. In vehicula lobortis semper.
-        Quisque interdum pretium felis sit amet facilisis. Etiam eleifend congue
-        mauris, a varius augue ultricies tincidunt. Integer vel neque lobortis,
-        vulputate est eget, condimentum tellus. Donec finibus nisi at odio
-        facilisis, ac cursus ligula pellentesque. Curabitur orci sem, lacinia id
-        odio aliquet, consectetur interdum ligula. Donec ac elit tortor. Nam
-        mattis luctus tincidunt. Nulla elementum lacus a ipsum viverra
-        condimentum. Praesent vehicula felis nec consectetur facilisis. Maecenas
-        nec pellentesque lorem. Vestibulum eleifend placerat leo non pulvinar. In
-        sit amet ornare metus. Etiam tristique tempor nunc. Integer eget
-        pellentesque risus. Donec lacus justo, fermentum at lectus nec, porta
-        porttitor odio. Sed consectetur sagittis est a pretium. Aliquam at ex nec
-        sem sagittis mollis. Vestibulum sed ex fringilla, tempor sem vitae,
-        scelerisque lorem. Vivamus sollicitudin felis quis est consectetur ornare.
-        Aliquam arcu justo, mollis a interdum quis, imperdiet ac eros. Curabitur
-        lectus odio, hendrerit posuere arcu non, congue fermentum odio. Curabitur
-        vitae semper turpis. Maecenas eu sem metus. Lorem ipsum dolor sit amet,
-        consectetur adipiscing elit. Donec eu congue purus. Praesent id nibh
-        magna. Duis at elementum dui. Pellentesque id magna sed tortor placerat
-        commodo. Cras pellentesque, sem et bibendum tempor, metus arcu bibendum
-        erat, at condimentum dui odio non lorem. Quisque dictum, ligula sit amet
-        sodales rutrum, nisi lectus suscipit ligula, elementum ornare justo massa
-        convallis turpis. In hac habitasse platea dictumst. Nulla finibus elit non
-        laoreet laoreet. Mauris condimentum velit non neque convallis, eu
-        pellentesque metus cursus. Fusce elementum, dui sed accumsan condimentum,
-        nisi mauris congue erat, et posuere magna purus eget libero. Nullam
-        volutpat vehicula lectus, in mollis ipsum dignissim a. Ut velit arcu,
-        consectetur id nisl eget, aliquet iaculis velit. Suspendisse nec mauris
-        ligula. Etiam pellentesque nulla at pulvinar facilisis. Fusce vitae
-        fermentum erat. Vestibulum tortor enim, luctus ut ultrices ut, placerat ut
-        ipsum. In a est vitae nulla feugiat facilisis vel sit amet nisi. Fusce
-        auctor ullamcorper est, sed tempus dui blandit quis. Phasellus mollis
-        ullamcorper arcu, feugiat iaculis augue sollicitudin eget. Phasellus et
-        vulputate ante. Integer eget orci dictum, sollicitudin mauris nec,
-        efficitur massa. Proin nec bibendum est. Quisque tempus a mi ac
-        vestibulum. Morbi pretium ut purus at varius. Donec euismod commodo augue.
-        Nulla ex turpis, fringilla nec porttitor et, tincidunt nec elit.
-        Suspendisse non elementum erat. Aliquam erat volutpat. Interdum et
-        malesuada fames ac ante ipsum primis in faucibus. Nulla et erat ultrices,
-        dictum sapien ac, placerat urna. Class aptent taciti sociosqu ad litora
-        torquent per conubia nostra, per inceptos himenaeos. Orci varius natoque
-        penatibus et magnis dis parturient montes, nascetur ridiculus mus. Morbi
-        vel dui eu leo aliquet varius. Nam vitae neque at justo auctor dictum.
-        Vestibulum vitae tellus laoreet, ornare sapien ut, mollis sapien. Aliquam
-        vitae tellus ex. Sed vel tempor mi. Pellentesque habitant morbi tristique
-        senectus et netus et malesuada fames ac turpis egestas. In lacinia congue
-        orci quis consequat. Nullam iaculis ultricies ipsum, in accumsan lacus
-        fringilla id. Praesent iaculis convallis lacus vel lobortis. Integer eget
-        lectus congue, sodales purus vel, fringilla magna. Praesent congue, turpis
-        ut maximus egestas, ex ipsum fermentum ante, sed porttitor arcu sapien nec
-        nisi. Nulla pellentesque mollis erat, vitae sodales mi varius id.
-        Pellentesque iaculis, nulla eget viverra blandit, leo ipsum ullamcorper
-        massa, ac auctor eros est sagittis odio. Praesent mattis leo felis. Donec
-        nisl diam, elementum non cursus at, tristique ut dui. In hac habitasse
-        platea dictumst. Phasellus eget arcu efficitur, lacinia nunc sed, feugiat
-        nunc. Cras non purus ac leo vestibulum convallis at ac nibh. Interdum et
-        malesuada fames ac ante ipsum primis in faucibus. Quisque egestas faucibus
-        turpis, sed placerat nisi blandit vitae. Curabitur ultrices malesuada
-        tincidunt. Duis porta, est sit amet gravida interdum, tellus enim
-        sollicitudin dolor, a efficitur est erat et augue. Morbi tristique sodales
-        sodales. Vivamus non erat cursus, sollicitudin massa id, consectetur
-        augue. Suspendisse dui mauris, dignissim a rutrum vel, auctor tincidunt
-        lacus. Sed fringilla quam dui, non dapibus sem ornare sit amet. Proin
-        vitae sollicitudin lorem. Duis libero diam, condimentum vitae pulvinar eu,
-        cursus non velit. Sed eleifend justo eu auctor tempus. Sed vulputate
-        ornare ullamcorper. Proin pulvinar convallis augue sed ultricies.
-        Phasellus nec fermentum lacus. Quisque aliquam turpis sed rutrum
-        ullamcorper. Donec volutpat purus nibh, sit amet luctus sapien vehicula
-        eget. Sed fermentum nisl et magna ultricies, tincidunt venenatis massa
-        varius. Curabitur sapien sapien, blandit ut laoreet nec, hendrerit sed
-        tellus. Praesent blandit nulla ut mi tristique feugiat. Morbi vehicula,
-        arcu auctor tincidunt imperdiet, lectus turpis finibus nulla, eget
-        sagittis lacus leo at sapien. In augue massa, facilisis id ligula
-        consequat, dapibus tincidunt augue. Vestibulum vel metus orci. Ut tempor
-        lorem aliquam nulla blandit porttitor. Pellentesque non venenatis lectus.
-        Duis vel finibus ipsum, ac suscipit est. Aenean ut iaculis turpis. Aliquam
-        tincidunt ornare nisi, elementum vestibulum ipsum tempus sed. Nam et neque
-        nec ligula sodales pretium at eget erat. Sed mi elit, lobortis ac mauris
-        id, tristique pellentesque ex. Sed sapien risus, commodo at felis eu,
-        posuere scelerisque mi. Duis ornare ut quam vitae rutrum. Pellentesque
-        dapibus nisi in orci fermentum, vel convallis ante scelerisque. Nulla
-        facilisi. Duis placerat dolor nibh. Pellentesque et est ut quam tincidunt
-        viverra. Fusce imperdiet laoreet luctus. Etiam bibendum sollicitudin dui.
-        Donec id urna id quam pretium scelerisque. Sed condimentum orci in tortor
-        porttitor luctus. Quisque viverra rutrum magna nec interdum. Praesent id
-        tortor sit amet erat finibus eleifend. Etiam sit amet ipsum et eros
-        consequat vestibulum. Integer ac feugiat nisl. Sed egestas nisi ac enim
-        porta, at ultrices urna varius. Maecenas fringilla pharetra sem et mollis.
-        Nullam ut metus a enim maximus auctor nec ac libero. Mauris consectetur mi
-        magna, vitae semper sapien viverra nec. Maecenas eget odio id leo finibus
-        rutrum. Nunc metus sapien, aliquet vitae metus at, venenatis pretium
-        mauris. Quisque at neque turpis. Fusce eu rhoncus purus. Sed placerat
-        magna finibus, molestie mi id, dignissim ipsum. Vivamus molestie massa sit
-        amet fringilla ornare. Curabitur fermentum felis ante, non pulvinar nunc
-        faucibus non. Etiam non augue elementum, bibendum eros sit amet, sagittis
-        mi. Duis consectetur sem velit, vitae imperdiet sapien pretium quis. Lorem
-        ipsum dolor sit amet, consectetur adipiscing elit. Integer mollis
-        porttitor augue eget malesuada. Fusce quis luctus lectus. Vestibulum nisi
-        orci, commodo at mauris vitae, feugiat egestas nisi. Nullam rhoncus lorem
-        at arcu mollis hendrerit lobortis quis mauris. Integer vel lectus a eros
-        aliquet pretium interdum at lacus. Etiam ligula ante, mattis et dignissim
-        sed, congue volutpat ligula. Nullam dapibus consectetur sollicitudin.
-        Phasellus sit amet ultrices orci. Sed bibendum odio enim, non vehicula
-        enim tristique vel. Nulla est nunc, scelerisque a luctus at, iaculis
-        rutrum ante. Donec id euismod turpis, sed elementum dolor. Sed ut
-        ullamcorper mauris. Nunc odio lacus, egestas id neque et, consectetur
-        volutpat tortor. Morbi malesuada magna et ante mollis, a tincidunt augue
-        cursus. Praesent a venenatis turpis. Sed varius venenatis justo at
-        sodales. Etiam tempus pretium urna ac aliquet. Curabitur eget rutrum est.
-        Nullam laoreet ex pharetra, lacinia tellus at, luctus sem. In sem magna,
-        pretium vitae aliquam in, fermentum eget metus. Pellentesque tincidunt
-        hendrerit nisi vitae semper. Donec tristique erat non finibus congue.
-        Praesent mattis dolor eu risus fermentum, eu commodo lacus auctor. Nam sed
-        turpis lobortis, tristique libero eget, ultrices lacus. Aliquam erat
-        volutpat. Nunc fermentum, magna id vestibulum pretium, nulla augue
-        faucibus ante, sit amet maximus nisl nisl id enim. Nulla semper tempus
-        orci quis molestie.
-    </p>
+    <img src="https://picsum.photos/300/200?2" width="100%">
+    <img src="https://picsum.photos/300/200?3" width="100%">
+    <img src="https://picsum.photos/300/200?4" width="100%">
+    <img src="https://picsum.photos/300/200?5" width="100%">
+    <img src="https://picsum.photos/300/200?6" width="100%">
+
     <script src="../dist/variablur.js"></script>
 </body>
 
